@@ -1,0 +1,2572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Cyber Relic Portal · 電子遺物門</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/p5@1.11.1/lib/p5.min.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; touch-action: none; }
+  canvas { display: block; image-rendering: pixelated; }
+
+  /* mini-game panels (message wall, dress-up studio) */
+  .panel { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+           background: rgba(20, 0, 20, 0.55); z-index: 10; font-family: "DotGothic16", monospace; }
+  .panel[hidden] { display: none; }
+  .panel form { width: min(92vw, 460px); max-height: 94vh; overflow-y: auto; background: #fff0fa;
+                border: 3px solid #2a0018; box-shadow: 10px 10px 0 #ff4fd8; color: #2a0018; touch-action: pan-y; }
+  .panel .bar { background: #ff4fd8; padding: 8px 12px; border-bottom: 3px solid #2a0018; letter-spacing: 1px; }
+  .panel .body { padding: 14px 12px; display: grid; gap: 10px; }
+  .panel input { font: inherit; font-size: 18px; padding: 10px; border: 2px solid #2a0018; background: #fff;
+                 color: #2a0018; outline: none; touch-action: auto; }
+  .panel input:focus { box-shadow: 0 0 0 3px #7dfcff; }
+  .panel .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+  .panel button { font: inherit; font-size: 16px; padding: 8px 14px; border: 2px solid #2a0018;
+                  background: #ffd1ec; color: #2a0018; cursor: pointer; }
+  .panel button[type=submit] { background: #fff200; }
+  .panel .status { min-height: 1.2em; font-size: 14px; }
+  .panel .note { font-size: 12px; opacity: 0.7; }
+
+  #studio-preview { justify-self: center; width: 168px; height: 168px; image-rendering: pixelated;
+                    border: 3px solid #2a0018; background: #ffd1ec; }
+  .pin { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+  .pin input { width: 22px; height: 22px; padding: 0; accent-color: #ff4fd8; }
+  .mine-title { border-top: 2px dashed #2a0018; padding-top: 8px; }
+  #wall-mine { display: grid; gap: 6px; max-height: 30vh; overflow-y: auto; }
+  .mine-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; font-size: 13px;
+              background: #fff; border: 2px solid #2a0018; padding: 4px 6px; }
+  .mine-row span { overflow-wrap: anywhere; }
+  .mine-row .left { font-size: 11px; opacity: 0.75; white-space: nowrap; }
+  .mine-row button { font-size: 12px !important; padding: 4px 8px !important; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: flex; align-items: center; gap: 6px; padding: 3px 8px 3px 3px !important; font-size: 13px !important; }
+  .chip canvas { width: 28px; height: 28px; image-rendering: pixelated; border: 1px solid #2a0018; }
+  .chip.sel { background: #fff200 !important; box-shadow: 3px 3px 0 #2a0018; }
+  #studio-new { background: #b8ff5c; }
+  .opt { display: grid; grid-template-columns: 80px 40px 1fr 40px; align-items: center; gap: 6px; }
+  .opt button { padding: 4px 0; }
+  .opt .val { text-align: center; background: #fff; border: 2px solid #2a0018; padding: 5px 4px; }
+</style>
+</head>
+<body>
+
+<div id="studio" class="panel" hidden>
+  <form autocomplete="off">
+    <div class="bar">✂ 着せ替え · MY PETS STUDIO</div>
+    <div class="body">
+      <div class="chips" id="studio-pets"></div>
+      <button type="button" id="studio-new">＋ HATCH A NEW PET</button>
+      <canvas id="studio-preview" width="168" height="168"></canvas>
+      <div id="studio-opts"></div>
+      <input id="studio-name" maxlength="14" placeholder="name your pet ♡" enterkeyhint="done">
+      <div class="row">
+        <button type="button" id="studio-delete">DELETE</button>
+        <button type="button" id="studio-random">RANDOM ✦</button>
+        <button type="button" id="studio-close">CLOSE</button>
+        <button type="submit">SAVE ♥</button>
+      </div>
+      <div class="status" id="studio-status"></div>
+      <div class="note">tap a pet to edit it ✦ your pets walk with you through every world and may appear in the fortune game</div>
+    </div>
+  </form>
+</div>
+
+<div id="wall" class="panel" hidden>
+  <form autocomplete="off">
+    <div class="bar">✉ 留言板 · WRITE ON THE WALL</div>
+    <div class="body">
+      <input id="wall-input" maxlength="60" placeholder="say something kind & cute ♡" enterkeyhint="send">
+      <label class="pin" id="wall-pin-label"><input type="checkbox" id="wall-pin"> PIN IT</label>
+      <div class="row">
+        <button type="button" id="wall-close">CLOSE</button>
+        <button type="submit">SEND ♥</button>
+      </div>
+      <div class="status" id="wall-status"></div>
+      <div class="mine-title">✉ YOUR MESSAGES</div>
+      <div id="wall-mine"></div>
+      <div class="note" id="wall-note"></div>
+    </div>
+  </form>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   CYBER RELIC PORTAL · 電子遺物門
+   An acid-house poster drawn entirely with Chinese & Japanese characters,
+   roamed by 63 Tamagotchi-style pets across 315 scenes.
+
+   Warp:    click / tap anywhere (only that; shaking can be re-enabled in CFG)
+   Pop-ups: cute windows appear on their own; tap one to close it
+   Mini-games (menu top-right):
+     占 FORTUNE GAME  (G)  pick one of three shuffled cards for a bazi reading
+     ✉ MESSAGE WALL   (W)  leave a kind message that scrolls behind the pets
+     ✂ DRESS-UP PET   (D)  build your own pet; it follows you everywhere
+   Sound: ♪ (or M).   Fullscreen: F.   Esc closes things.
+
+   1. Config              6. Grid & pet layer     7e. Message wall
+   2. Palettes            7. Cell painters        7f. Fortune card game
+   3. Pixel pets          7b. The cute virus      7g. Dress-up studio
+   4. Worlds & scenes     7c. Vibe reading        8.  Poster HUD
+   5. Background fields   7d. Bazi oracle cards   9.  p5 lifecycle & input
+                                                  10. Void portal sound
+   ===================================================================== */
+
+
+/* ---------- 1. CONFIG ------------------------------------------------ */
+
+const CFG = {
+  gridCells: 48,         // character cells across the short side of the screen
+  fps: 30,
+  transitionMs: 700,
+  shakeToWarp: false,    // scenes change only on click / tap; set true to also warp by shaking the phone
+  shakeForce: 14,        // m/s² (gravity removed) that counts as a shake
+  shakeCooldownMs: 700,
+};
+
+// Cute pop-up windows that appear on their own. {pet} = the star pet, {time} = local time.
+const POPUPS = {
+  minGapMs: 2500, maxGapMs: 7000, maxOpen: 3, minLifeMs: 3800, maxLifeMs: 6500,
+  apps: ['KAWAII.EXE', 'GLITTER.DLL', 'MOCHI_OS', 'PURR.SYS', 'SPARKLE32', 'BOBA.BAT', 'HEART.CPL',
+         'CUTE_VIRUS.SCR', 'NYAA.INI', 'FLUFF.DRV', 'UWU.COM', 'PIXIE.TMP'],
+  errors: [
+    ['ウイルス検出!! ♡', 'KAWAII.EXE has infected', 'your heart (｡･ω･｡)'],
+    ['警告 ♥ 萌えすぎ', 'CUTENESS OVERFLOW', 'at 0xDEADBEEF'],
+    ['致命的な可愛さ', 'FATAL SPARKLE EXCEPTION', 'please hug to continue'],
+    ['ｷﾀ━(ﾟ∀ﾟ)━!!', 'GLITTER.DLL NOT FOUND', 'installing more glitter…'],
+    ['愛のバグ ♪', 'SYSTEM32 TURNED PINK', 'this is fine ♥'],
+    ['ERROR 404 ♡', 'SADNESS NOT FOUND', 'only good vibes remain'],
+    ['LOW BATTERY (｡>﹏<｡)', '{pet} needs a snack', 'and maybe a nap'],
+    ['WARNING ☆彡', 'TOO MUCH SPARKLE DETECTED', 'wear sunglasses'],
+    ['DISK FULL ♥', 'of cute pictures', 'delete nothing. keep all.'],
+    ['UPDATE REQUIRED', 'your outfit is already perfect', 'no update needed ✦'],
+    ['SYSTEM ALERT (ﾉ◕ヮ◕)ﾉ', 'a pet is looking at you', 'look back politely'],
+    ['FIREWALL ♡', 'blocked 3 bad vibes', 'you are safe here'],
+    ['RAM ALMOST FULL', 'of daydreams', 'this is normal'],
+    ['UNKNOWN USER', 'wait… it is YOU!!', 'welcome back bestie'],
+    ['CRITICAL ✦', 'hug level dangerously low', 'refill immediately'],
+  ],
+  buttons: [['OK ♥', 'YES ♥'], ['ALSO YES', 'YES'], ['HUG', 'HUG'], ['(｡･ω･｡)', 'OK'], ['NYA', 'NYAA']],
+  loading: ['DOWNLOADING CUTENESS', 'INSTALLING GLITTER', 'LOADING HUGS', 'COMPILING SPARKLES',
+            'UPLOADING GOOD VIBES', 'DEFRAGMENTING HEART', 'BUFFERING MOCHI'],
+  loaded:  ['you are now 200% cuter', 'glitter installed everywhere', 'hugs ready to deploy',
+            'sparkles compiled with 0 errors', 'vibes: immaculate'],
+  achievements: [
+    'Stared at a pet for way too long', 'Visited the portal at {time}', 'Did not blink for 3 seconds',
+    'Became friends with a slime', 'Survived a cute virus', 'Found the secret sparkle',
+    'Looked cute (automatically)', 'Pressed nothing and still won', 'Collected 0 regrets',
+  ],
+  chats: [
+    'are you eating well? (｡･ω･｡)', 'i made you a flower ✿', 'can we get boba later??', 'you look sparkly today ✦',
+    'i ate the glitter. oops', 'hold still, i am hugging the screen', 'i believe in you!! ♥',
+    'is it {time} already?? time for a snack', 'i am not a virus, i am a friend', 'pls pet me (click softly)',
+    'guess what… you are cute', "i've been practicing my dance ♪", 'tell me a secret (i will not tell)',
+  ],
+  toasts: [
+    '📩 1 new cuddle', '♥ someone thinks you are cute', '✦ +10 sparkle points', '♪ your pet is humming',
+    '☆ luck +1', '🍡 mochi delivered', '✉ a pet wrote you a letter', '♡ friendship level up',
+    '🌙 the moon says hi', '🫧 bubbles incoming',
+  ],
+  stats: ['HUNGRY', 'HAPPY', 'SLEEPY', 'SPARKLE', 'FLUFFY', 'CHAOS', 'LOVE'],
+};
+
+// Shared message wall. Leave url/anonKey empty and messages stay on this device only.
+// To share with everyone: create a free Supabase project (supabase.com), run this SQL,
+// then paste the project URL and the "anon public" key below.
+//
+//   create table messages (
+//     id bigint generated always as identity primary key,
+//     text text not null check (char_length(text) between 2 and 60),
+//     pinned boolean not null default false,
+//     created_at timestamptz not null default now());
+//   alter table messages enable row level security;
+//   create policy "anyone can read"  on messages for select using (true);
+//   create policy "anyone can write" on messages for insert with check (char_length(text) between 2 and 60);
+//   create policy "anyone can pin"   on messages for update using (true) with check (true);
+//   revoke update on messages from anon;
+//   grant update (pinned) on messages to anon;      -- visitors may only change the pin, never the text
+const GUESTBOOK = {
+  url: '',               // e.g. 'https://abcdefgh.supabase.co'
+  anonKey: '',
+  table: 'messages',
+  maxLen: 60, keep: 40, pollMs: 20000, cooldownMs: 30000,
+  expireHours: 24,       // unpinned messages disappear after this long; pinned ones stay
+};
+
+// Owner's pinned messages: written into this file, so EVERYONE who opens the published
+// page sees them, no database needed. Add one line per message (max 60 characters each).
+const PINNED_MESSAGES = [
+  // 'welcome to my cyber relic portal ♡',
+];
+
+const FONT = '"DotGothic16", "MS Gothic", "Osaka-Mono", "Hiragino Kaku Gothic ProN", "PingFang SC", "Noto Sans CJK JP", monospace';
+const TITLE_JP = '電子遺物門';
+const TITLE_EN = 'CYBER RELIC PORTAL';
+
+const RAMP   = Array.from(' ・一二十三土王田目国圏霧龍鬱');   // light → heavy ink
+const GLITCH = Array.from('▓▒░█▚▞■□');
+const EMOTES = ['♥', '♪', '✿', '★', '愛', '萌', '☆', '！'];
+
+// The cute virus: random outbreaks that take over the portal for a moment.
+const VIRUS = {
+  minGapMs: 3500, maxGapMs: 9000, minDurMs: 900, maxDurMs: 2200,
+  types: ['hearts', 'clones', 'kaomoji', 'melt', 'negative', 'popup'],
+  colors: ['#ff4fd8', '#fff200', '#7dfcff', '#b8ff5c', '#ffffff', '#ff9e3d'],
+  ink: '#2a0018',
+  kaomoji: Array.from(' (ﾉ◕ヮ◕)ﾉ*:･ﾟ✧ ♡(｡･ω･｡)♡ ｷﾀ━(ﾟ∀ﾟ)━!! ☆彡 (≧▽≦) ♪'),
+};
+
+const IS_COARSE = matchMedia('(pointer: coarse)').matches;
+const NEEDS_MOTION_PERMISSION =
+  typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function';
+
+
+/* ---------- 2. PALETTES (index 0 = dark ground) ---------------------- */
+
+const PALETTES = {
+  neonNoir: ['#07010f', '#00fff0', '#ff00a8', '#7b2cff', '#f5f5ff', '#1b1446'],
+  acid:     ['#0a0a0a', '#fff200', '#ff2bd6', '#00e5ff', '#39ff14', '#ffffff'],
+  lagoon:   ['#001a2c', '#00ffd5', '#ff7eeb', '#6af2ff', '#fcff6c', '#ffffff'],
+  chrome:   ['#0b0b12', '#e8e8f0', '#ff66cc', '#9aa0b5', '#66ffe0', '#ffffff'],
+  gold:     ['#140c24', '#ffd166', '#ef476f', '#06d6a0', '#118ab2', '#fff1d0'],
+  dragon:   ['#1a0006', '#ff3c00', '#ffae00', '#ff0054', '#ffe5b4', '#7a00ff'],
+  holo:     ['#10002b', '#a0fffb', '#ffb3f5', '#fffab3', '#b3c7ff', '#ffffff'],
+  rave:     ['#12002b', '#ff006e', '#ffbe0b', '#3a86ff', '#fb5607', '#8338ec'],
+  barbie:   ['#2a0018', '#ff4fb3', '#ffd1ec', '#e0218a', '#ff9ad5', '#ffffff'],
+  bratz:    ['#1a0526', '#c77dff', '#ff5ec4', '#e0aaff', '#f7f0ff', '#9d4edd'],
+  candy:    ['#300018', '#ff5d8f', '#97e8ff', '#fff07c', '#b8f2e6', '#ffffff'],
+  pastel:   ['#2b2140', '#ffc8dd', '#bde0fe', '#caffbf', '#fdffb6', '#ffadad'],
+  neopets:  ['#0f2a1a', '#9ef01a', '#ffd60a', '#ff8fab', '#70e000', '#fffcf2'],
+  matcha:   ['#101d10', '#b5e48c', '#ffafcc', '#fefae0', '#d9ed92', '#ffffff'],
+  garden:   ['#0d1f0f', '#a7f070', '#ff8fab', '#ffd60a', '#c77dff', '#fefae0'],
+  firefly:  ['#0a0a1f', '#e9ff70', '#70ffb8', '#ff70a6', '#70d6ff', '#ffffff'],
+  coral:    ['#001a33', '#ff7eb6', '#7afcff', '#ffd6a5', '#b8f2e6', '#ffffff'],
+  abyss:    ['#02010f', '#36f1cd', '#7b2cff', '#ff5ec4', '#fcff6c', '#e0fbfc'],
+};
+
+
+/* ---------- 3. PIXEL PETS -------------------------------------------- */
+// Pixel codes: '.' empty · '1' body · '2' accent · '3' deep ink · '4' shine
+
+// Hand-drawn classics (pets) and relic items (used as wallpaper tiles).
+const SPRITE_ART = {
+  robo:     ['.....33.....', '.....11.....', '111111111111', '122222222221', '123322223321', '123322223321',
+             '122222222221', '122333333221', '111111111111', '..1.1111.1..', '.11.1..1.11.'],
+  cat:      ['.1........1.', '.11......11.', '.1111111111.', '111111111111', '113311113311', '113311113311',
+             '121111111121', '111113311111', '.1111111111.', '..11....11..'],
+  skull:    ['...111111...', '..11111111..', '.1111111111.', '.1331111331.', '.1333113331.', '.1111111111.',
+             '..11133111..', '...111111...', '...1.11.1...', '...111111...'],
+  smiley:   ['...111111...', '.1111111111.', '.1111111111.', '111331133111', '111331133111', '111111111111',
+             '131111111131', '113111111311', '.1113333111.', '.1111111111.', '...111111...'],
+  slime:    ['.....1.....', '....111....', '...11111...', '..1211111..', '.121111111.', '.113111311.',
+             '11111111111', '11113331111', '11111111111', '.111111111.'],
+  ghost:    ['...1111...', '..111111..', '.11111111.', '.13111131.', '.13111131.', '.21111112.',
+             '.11133111.', '.11111111.', '.11111111.', '1.11..11.1'],
+  mushroom: ['...2222...', '..221122..', '.22111122.', '.21222212.', '2222222222', '..111111..',
+             '..131131..', '..111111..', '...1111...'],
+  bunny:    ['..11....11..', '..121..121..', '..121..121..', '..121..121..', '.1111111111.', '111111111111',
+             '113111111311', '121112211121', '111113311111', '.1111111111.', '..11....11..'],
+  blob:     ['...1111...', '..111111..', '.11111111.', '.13111131.', '.11111111.', '.21133112.',
+             '.11111111.', '..111111..', '.1.1..1.1.'],
+  bear:     ['.11......11.', '1221....1221', '.1111111111.', '111111111111', '113111111311', '111122221111',
+             '111123321111', '.1111111111.', '..11111111..'],
+  chick:    ['....111...', '...11111..', '..1131111.', '..1111122.', '..111111..', '.11111111.',
+             '1111111111', '.11111111.', '..1....1..', '..22...22.'],
+  star:     ['.....1.....', '....111....', '...11111...', '11111111111', '.113111311.', '..1111111..',
+             '..1113111..', '.111111111.', '.111...111.', '11.......11'],
+  // relic items
+  ufo:      ['....3333....', '...322223...', '..11111111..', '.1313131311.', '111111111111', '.1111111111.',
+             '...2.2.2....', '..2..2..2...', '.2...2...2..'],
+  heart:    ['.111...111.', '11211.11111', '12111111111', '11311111311', '.111333111.', '..1111111..',
+             '...11111...', '....111....', '.....1.....'],
+  sword:    ['...........1', '..........13', '.........13.', '........13..', '.......13...', '..2...13....',
+             '...2.13.....', '....2.......', '...3.2......', '..3...2.....', '.2..........'],
+  potion:   ['...3333...', '....22....', '....22....', '...2112...', '..211112..', '.21131112.',
+             '.21111312.', '.21311112.', '..211112..', '...2222...'],
+  crown:    ['3....3....3', '11..111..11', '111.111.111', '11111111111', '12111311121', '11111111111', '.111111111.'],
+  dress:    ['...2..2...', '...1111...', '...1111...', '....11....', '...1111...', '..113311..',
+             '..111111..', '.11111111.', '.11111111.', '1212121212'],
+  lipstick: ['...22...', '..222...', '..2222..', '..2222..', '.333333.', '.311113.', '.311113.',
+             '.333333.', '.311113.', '.311113.', '.333333.'],
+  bag:      ['...3333...', '..3....3..', '..3....3..', '1111111111', '1111221111', '1111221111',
+             '1111111111', '1111111111', '.11111111.'],
+  bow:      ['111.....111', '12211.11221', '12221312221', '12221312221', '12211.11221', '111.121.111',
+             '...12.21...', '..12...21..'],
+  diamond:  ['3........3', '..222222..', '.21121121.', '2111111112', '.21111112.', '..211112..',
+             '...2112...', '....22....', '.3......3.'],
+  perfume:  ['....33....', '....22....', '...2222...', '..211112..', '.21133112.', '.21311112.',
+             '.21111112.', '.21111112.', '..222222..'],
+  cherry:   ['......33..', '.....3.3..', '....3...3.', '...3....3.', '.11....11.', '1111..1111',
+             '1211..1211', '1111..1111', '.11....11.'],
+};
+
+// Modular pets: a body + eyes + mouth + hat (+ blush). Bodies are 12 wide, centre at x = 6.
+const BODIES = {
+  round:   { eyeY: 4, dx: 3, mouthY: 6, rows: ['...111111...', '..11111111..', '.1111111111.', '.1111111111.', '111111111111',
+             '111111111111', '111111111111', '.1111111111.', '..11111111..', '...1....1...'] },
+  bunny:   { eyeY: 5, dx: 3, mouthY: 7, rows: ['..11....11..', '..12....21..', '..12....21..', '..11....11..', '.1111111111.',
+             '111111111111', '111111111111', '111111111111', '.1111111111.', '..11....11..'] },
+  cat:     { eyeY: 4, dx: 3, mouthY: 6, rows: ['.1........1.', '.11......11.', '.121....121.', '.1111111111.', '111111111111',
+             '111111111111', '111111111111', '.1111111111.', '..1......1..'] },
+  bear:    { eyeY: 3, dx: 3, mouthY: 5, rows: ['.11......11.', '1221....1221', '.1111111111.', '111111111111', '111111111111',
+             '111122221111', '111122221111', '.1111111111.', '..11111111..'] },
+  bird:    { eyeY: 3, dx: 2, mouthY: 5, rows: ['....1111....', '...111111...', '..11111111..', '..11111111..', '.2111111112.',
+             '221111111122', '.2111111112.', '..11111111..', '...111111...', '...2....2...'] },
+  ghost:   { eyeY: 3, dx: 3, mouthY: 5, rows: ['...111111...', '..11111111..', '.1111111111.', '.1111111111.', '.1111111111.',
+             '.1111111111.', '.1111111111.', '.1111111111.', '.11.1111.11.', '.1...11...1.'] },
+  jelly:   { eyeY: 2, dx: 3, mouthY: 4, rows: ['...111111...', '..11111111..', '.1111111111.', '.1111111111.', '.1111111111.',
+             '.2222222222.', '..1.1..1.1..', '.1..1..1..1.', '.1.1....1.1.'] },
+  frog:    { eyeY: 1, dx: 4, mouthY: 4, rows: ['.111....111.', '11111..11111', '111111111111', '111111111111', '111111111111',
+             '.1111111111.', '.1122222211.', '..11111111..', '.11......11.'] },
+  cap:     { eyeY: 3, dx: 2, mouthY: 5, rows: ['...222222...', '.2211222112.', '222222222222', '..11111111..', '..11111111..',
+             '..11111111..', '..11111111..', '...1....1...'] },
+  horned:  { eyeY: 4, dx: 3, mouthY: 6, rows: ['.2........2.', '.22......22.', '..11111111..', '.1111111111.', '111111111111',
+             '111111111111', '111111111111', '112222222211', '.1111111111.', '.11......11.'] },
+  star:    { eyeY: 4, dx: 2, mouthY: 6, rows: ['.....11.....', '....1111....', '....1111....', '111111111111', '.1111111111.',
+             '..11111111..', '..11111111..', '.1111..1111.', '.111....111.', '11........11'] },
+  cloud:   { eyeY: 3, dx: 3, mouthY: 5, rows: ['....1111....', '..11111111..', '.1111111111.', '111111111111', '111111111111',
+             '111111111111', '.1111111111.', '..2..2..2...', '.2..2..2....'] },
+  penguin: { eyeY: 2, dx: 2, mouthY: 4, rows: ['...111111...', '..11111111..', '.1111111111.', '.1122222211.', '111222222111',
+             '111222222111', '.1122222211.', '..11222211..', '..22....22..'] },
+  hamster: { eyeY: 3, dx: 3, mouthY: 5, rows: ['..11....11..', '.1111111111.', '111111111111', '111111111111', '111111111111',
+             '112111111211', '111111111111', '.1122222211.', '..11111111..'] },
+  fox:     { eyeY: 4, dx: 3, mouthY: 6, rows: ['1..........1', '11........11', '1211....1121', '111111111111', '111111111111',
+             '221111111122', '.2221111222.', '..22222222..', '...222222...'] },
+  sheep:   { eyeY: 3, dx: 2, mouthY: 5, rows: ['.2.2.2.2.2..', '222222222222', '221111111122', '211111111112', '211111111112',
+             '221111111122', '222222222222', '.2.2222222..', '..1.....1...'] },
+  robot:   { eyeY: 2, dx: 3, mouthY: 4, rows: ['111111111111', '122222222221', '122222222221', '122222222221', '122222222221',
+             '111111111111', '..11111111..', '.1111111111.', '.11.1111.11.'] },
+  drop:    { eyeY: 5, dx: 3, mouthY: 7, rows: ['.....11.....', '....1111....', '...111111...', '..11111111..', '.1111111111.',
+             '111111111111', '111111111111', '111111111111', '.1111111111.'] },
+  heart:   { eyeY: 2, dx: 3, mouthY: 4, rows: ['.111....111.', '11111..11111', '111111111111', '111111111111', '.1111111111.',
+             '..11111111..', '...111111...', '....1111....', '.....11.....'] },
+  egg:     { eyeY: 2, dx: 3, mouthY: 4, rows: ['....1111....', '...111111...', '..11111111..', '.1111111111.', '.1111111111.',
+             '.2121212121.', '.1212121212.', '.1111111111.', '..11111111..', '...111111...'] },
+  bee:     { eyeY: 4, dx: 3, mouthY: 5, rows: ['.22......22.', '2222....2222', '..11111111..', '.1111111111.', '111111111111',
+             '111111111111', '222222222222', '111111111111', '.2222222222.', '..11111111..'] },
+  // cute insects
+  butterfly:   { eyeY: 3, dx: 2, mouthY: 5, rows: ['...3....3...', '11..3..3..11', '1221.11.1221', '122211112221', '122211112221',
+                 '.1221111221.', '..11.11.11..', '.121.11.121.', '.11..11..11.'] },
+  ladybug:     { eyeY: 3, dx: 3, mouthY: 5, rows: ['..3......3..', '...3....3...', '..11111111..', '.1111111111.', '.1111111111.',
+                 '.1111111111.', '133333333331', '112111111211', '111112211111', '.1211111121.', '..11111111..'] },
+  caterpillar: { eyeY: 3, dx: 3, mouthY: 5, rows: ['..3......3..', '...3....3...', '..11111111..', '.1111111111.', '.1111111111.',
+                 '.1111111111.', '..11111111..', '...222222...', '..22222222..', '...222222...', '..2......2..'] },
+  beetle:      { eyeY: 4, dx: 3, mouthY: 6, rows: ['.....2......', '....22......', '.....22.....', '..11111111..', '.1111111111.',
+                 '111111111111', '111111111111', '111112211111', '111112211111', '.1111221111.', '.1.1....1.1.'] },
+  dragonfly:   { eyeY: 1, dx: 2, mouthY: 3, rows: ['....1111....', '...111111...', '22.111111.22', '222111111222', '.2221111222.',
+                 '..21111112..', '....1111....', '....1111....', '.....11.....'] },
+  // sea creatures
+  octopus:     { eyeY: 3, dx: 3, mouthY: 5, rows: ['...111111...', '..11111111..', '.1111111111.', '.1111111111.', '.1111111111.',
+                 '111111111111', '1.11.11.11.1', '1.1..11..1.1', '.1..1..1..1.'] },
+  puffer:      { eyeY: 3, dx: 3, mouthY: 5, rows: ['..2..22..2..', '...111111...', '2.11111111.2', '.1111111111.', '211111111112',
+                 '.1111111111.', '2.11111111.2', '...111111...', '..2..22..2..'] },
+  crab:        { eyeY: 4, dx: 3, mouthY: 6, rows: ['22........22', '2.2......2.2', '222......222', '.2.111111.2.', '..11111111..',
+                 '.1111111111.', '111111111111', '.1111111111.', '1.1.1..1.1.1'] },
+  whale:       { eyeY: 3, dx: 3, mouthY: 5, rows: ['....2..2....', '.....22.....', '..11111111..', '.1111111111.', '111111111111',
+                 '111111111111', '112222222211', '.1222222221.', '..11111111..', '11........11'] },
+  turtle:      { eyeY: 1, dx: 2, mouthY: 2, rows: ['....1111....', '...111111...', '....1111....', '.1.222222.1.', '..22122122..',
+                 '.2212222122.', '..22122122..', '.1.222222.1.', '.....11.....'] },
+  axolotl:     { eyeY: 3, dx: 3, mouthY: 5, rows: ['2..........2', '.2.111111.2.', '2.11111111.2', '.1111111111.', '211111111112',
+                 '.1111111111.', '..11111111..', '..1......1..'] },
+};
+
+// Eye pixels as [outward dx, dy, code]; mirrored for the right eye.
+const EYES = {
+  dot:    [[0, 0, '3']],
+  tall:   [[0, 0, '3'], [0, 1, '3']],
+  shine:  [[0, 0, '4'], [1, 0, '3'], [0, 1, '3'], [1, 1, '3']],
+  happy:  [[1, 0, '3'], [0, -1, '3'], [-1, 0, '3']],
+  sleepy: [[0, 0, '3'], [1, 0, '3']],
+  star:   [[0, 0, '4'], [0, -1, '3'], [0, 1, '3'], [1, 0, '3'], [-1, 0, '3']],
+  heart:  [[-1, 0, '2'], [1, 0, '2'], [-1, 1, '2'], [0, 1, '2'], [1, 1, '2'], [0, 2, '2']],
+  dizzy:  [[-1, -1, '3'], [1, -1, '3'], [0, 0, '3'], [-1, 1, '3'], [1, 1, '3']],
+};
+const EYE_PAIRS = {
+  dot: ['dot', 'dot'], tall: ['tall', 'tall'], shine: ['shine', 'shine'], happy: ['happy', 'happy'],
+  sleepy: ['sleepy', 'sleepy'], star: ['star', 'star'], heart: ['heart', 'heart'], dizzy: ['dizzy', 'dizzy'],
+  wink: ['sleepy', 'shine'],
+};
+// Mouth pixels as [dx, dy, code] from the left of the two centre columns.
+const MOUTHS = {
+  smile:  [[-1, 0, '3'], [0, 1, '3'], [1, 1, '3'], [2, 0, '3']],
+  flat:   [[0, 0, '3'], [1, 0, '3']],
+  o:      [[0, 0, '3'], [1, 0, '3'], [0, 1, '2'], [1, 1, '2']],
+  fang:   [[-1, 0, '3'], [0, 0, '3'], [1, 0, '3'], [2, 0, '3'], [0, 1, '4']],
+  tongue: [[0, 0, '3'], [1, 0, '3'], [1, 1, '2']],
+  beak:   [[0, 0, '2'], [1, 0, '2']],
+};
+// Headwear, centred above the body.
+const HATS = {
+  bow:     ['22.22', '22322'],
+  crown:   ['4.4.4', '22222'],
+  halo:    ['.4444.', '......'],
+  antenna: ['4', '3'],
+  sprout:  ['2.2', '.2.'],
+  flower:  ['.4.', '424', '.4.'],
+  party:   ['..4..', '..2..', '.232.', '22222'],
+  witch:   ['...3...', '..33...', '..333..', '3333333'],
+  beret:   ['..3...', '.2222.', '222222'],
+  horns:   ['3......3', '33....33'],
+  sparkle: ['.4.', '444', '.4.'],
+  cherry:  ['3.3', '2.2'],
+  tophat:  ['.333.', '.222.', '33333'],
+};
+
+// "body eyes mouth hat [blush]"  →  sprite rows
+function composePet(spec) {
+  const [body, eyes, mouth, hat, ...flags] = spec.split(' ');
+  const B = BODIES[body], W = 12, cx = 6, H = HATS[hat] || [];
+  const grid = H.map(r => {
+    const row = Array(W).fill('.'), x0 = Math.round(cx - r.length / 2);
+    Array.from(r).forEach((c, q) => { if (c !== '.' && x0 + q >= 0 && x0 + q < W) row[x0 + q] = c; });
+    return row;
+  }).concat(B.rows.map(r => Array.from(r.padEnd(W, '.'))));
+
+  const off = H.length;
+  const onBody = (x, y, c) => { if (grid[y] && grid[y][x] && grid[y][x] !== '.') grid[y][x] = c; };
+  const [ls, rs] = EYE_PAIRS[eyes], lx = cx - B.dx, rx = cx + B.dx - 1, ey = B.eyeY + off;
+  EYES[ls].forEach(([dx, dy, c]) => onBody(lx - dx, ey + dy, c));
+  EYES[rs].forEach(([dx, dy, c]) => onBody(rx + dx, ey + dy, c));
+  if (flags.includes('blush')) { onBody(lx - 1, ey + 2, 'b'); onBody(rx + 1, ey + 2, 'b'); }   // 'b' = blush pixel
+  (MOUTHS[mouth] || []).forEach(([dx, dy, c]) => onBody(cx - 1 + dx, B.mouthY + off + dy, c));
+  return grid.map(r => r.join(''));
+}
+
+const SPRITES = {};
+function registerSprite(key, rows) {
+  const w = Math.max(...rows.map(r => r.length));
+  SPRITES[key] = { w, h: rows.length, rows: rows.map(r => r.padEnd(w, '.')) };
+  return key;
+}
+Object.entries(SPRITE_ART).forEach(([key, rows]) => registerSprite(key, rows));
+
+
+/* ---------- 4. WORLDS & SCENES --------------------------------------- */
+// pets: [EN, CJK, 'art:<classic>' or composePet spec]   places: [field, EN, CJK]
+
+const WORLDS = [
+  {
+    en: 'CYBER CITY', jp: '電脳街',
+    glyphs: '電脳網零壱弐参機光線速信号接続回路夜雨街鋼ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄ',
+    palettes: ['neonNoir', 'acid', 'lagoon', 'chrome'],
+    items: ['ufo', 'heart', 'diamond'],
+    lucky: ['neon hair clip', 'glitter USB', 'chrome sticker', 'pixel earrings'],
+    pets: [
+      ['ROBO BABY', '机器宝宝', 'art:robo'],               ['NEON KITTY', '霓虹猫', 'art:cat'],
+      ['KAWAII SKULL', '可愛骷髏', 'art:skull'],           ['ACID FACE', '酸性笑顔', 'art:smiley'],
+      ['GLITCH BUNNY', '故障兎', 'bunny dizzy smile antenna blush'],
+      ['PIXEL BOT', 'ピクセル坊', 'robot shine flat antenna'],
+      ['WIFI FROG', '無線蛙', 'frog dot smile antenna blush'],
+      ['CHROME PENGUIN', '鍍金企鹅', 'penguin shine flat tophat'],
+      ['BYTE HAMSTER', '字节仓鼠', 'hamster star smile sparkle'],
+      ['VIRUS JELLY', '病毒水母', 'jelly dizzy tongue horns'],
+      ['LASER FOX', '雷射狐', 'fox tall fang -'],
+      ['NEON CLOUD', '霓虹雲', 'cloud sleepy flat antenna'],
+      ['CYBER DINO', '电子恐竜', 'horned shine fang -'],
+      ['DATA DROP', '数据滴', 'drop happy smile sparkle blush'],
+      ['GLOW BEE', '蛍光蜂', 'bee heart smile antenna'],
+    ],
+    places: [['rain', 'RAIN ALLEY', '雨巷'], ['tunnel', 'WARP GATE', '跃迁门'], ['grid', 'SYNTH FLOOR', '合成床'],
+             ['moire', 'SERVER TEMPLE', '服务器寺'], ['plasma', 'ION BATH', '離子浴']],
+  },
+  {
+    en: 'RELIC REALM', jp: '魔法界',
+    glyphs: '龍剣魔法城星月火水木金土竜騎士宝珠呪術妖精神秘迷宮王冠勇者',
+    palettes: ['gold', 'dragon', 'holo', 'rave'],
+    items: ['sword', 'potion', 'crown'],
+    lucky: ['moon potion', 'tiny crown', 'star charm', 'crystal key'],
+    pets: [
+      ['SLIME PRINCE', 'スライム王子', 'art:slime'],       ['SHY GHOST', '内気な幽霊', 'art:ghost'],
+      ['SHROOM SPRITE', '茸精', 'art:mushroom'],
+      ['MOON BUNNY', '月兎', 'bunny happy smile halo blush'],
+      ['WITCH KITTY', '魔女猫', 'cat shine smile witch'],
+      ['DRAGON EGG', '竜の卵', 'egg tall fang horns'],
+      ['FAIRY FROG', '妖精蛙', 'frog heart smile flower'],
+      ['KNIGHT BEAR', '騎士熊', 'bear dot flat crown'],
+      ['PHANTOM JELLY', '幻影水母', 'jelly star o halo'],
+      ['ORACLE OWL', '神託梟', 'bird shine beak horns'],
+      ['STAR SPIRIT', '星霊', 'star happy smile halo blush'],
+      ['MIMIC SLIME', '宝箱スライム', 'drop wink tongue crown'],
+      ['GOBLIN BABY', '小妖精', 'horned wink fang sprout'],
+      ['HEAVEN PUFF', '天空泡', 'cloud wink smile halo blush'],
+      ['MAGE SHEEP', '魔法羊', 'sheep sleepy smile witch'],
+    ],
+    places: [['spiral', 'ENCHANTED SPIRAL', '魔法螺旋'], ['rings', 'MOON WELL', '月之井'], ['stars', 'STAR FOREST', '星の森'],
+             ['kaleido', 'CRYSTAL CAVE', '水晶洞窟'], ['checker', 'CHESS KINGDOM', '棋盤王国']],
+  },
+  {
+    en: 'DOLL HOUSE', jp: '人形館',
+    glyphs: '愛美姫花蝶夢恋桃薔薇鏡服靴髪唇宝石可憐華麗粧香',
+    palettes: ['barbie', 'bratz', 'chrome', 'candy'],
+    items: ['dress', 'lipstick', 'bag', 'bow', 'diamond', 'perfume'],
+    lucky: ['pink lip gloss', 'satin bow', 'heart locket', 'mini mirror'],
+    pets: [
+      ['GLOSS KITTY', '唇膏猫', 'cat shine tongue bow blush'],
+      ['RUNWAY BUNNY', '伸展兎', 'bunny wink smile beret'],
+      ['DIAMOND BEAR', '鑽石熊', 'bear star smile crown blush'],
+      ['DISCO JELLY', '迪斯可水母', 'jelly star smile sparkle'],
+      ['POODLE PUFF', '貴婦犬', 'sheep shine smile bow blush'],
+      ['VELVET FOX', '天鵝絨狐', 'fox wink smile beret'],
+      ['SATIN BIRDIE', '緞帯小鳥', 'bird heart beak bow'],
+      ['PARTY PENGUIN', '派対企鹅', 'penguin happy flat party'],
+      ['GLAM GHOST', '華麗幽霊', 'ghost shine smile tophat blush'],
+      ['PEARL HAMSTER', '珍珠倉鼠', 'hamster shine smile flower'],
+      ['BLUSH HEART', '恋心', 'heart happy smile bow blush'],
+      ['CHIC CLOUD', '時尚雲', 'cloud happy smile beret'],
+      ['PRINCESS EGG', '公主蛋', 'egg shine smile crown blush'],
+      ['BRATZ BEE', '辣妹蜂', 'bee wink tongue bow'],
+      ['MIRROR SLIME', '鏡スライム', 'drop heart smile sparkle'],
+    ],
+    places: [['sunburst', 'RUNWAY', '伸展台'], ['hearts', 'LOVE MALL', '恋愛商場'], ['checker', 'DISCO FLOOR', '迪斯可'],
+             ['stripes', 'CANDY CLOSET', '糖果衣櫥'], ['kaleido', 'MIRROR SALON', '鏡の間']],
+  },
+  {
+    en: 'PET SOCIETY', jp: '寵物村',
+    glyphs: '猫犬兎熊鳥卵餅糖果苺菓幸福遊喜笑萌甘星花',
+    palettes: ['pastel', 'neopets', 'candy', 'matcha'],
+    items: ['cherry', 'heart', 'potion'],
+    lucky: ['strawberry mochi', 'bunny plush', 'bubble tea', 'cherry charm'],
+    pets: [
+      ['MOCHI BUNNY', '餅兎', 'art:bunny'],                ['EGG BUDDY', '蛋蛋仔', 'art:blob'],
+      ['HONEY BEAR', '蜂蜜熊', 'art:bear'],                ['PIYO CHICK', 'ぴよぴよ', 'art:chick'],
+      ['LUCKY STAR', '幸運星', 'art:star'],
+      ['PUDDING BLOB', '布丁', 'round shine smile cherry blush'],
+      ['NAP CAT', '昼寝猫', 'cat sleepy smile -'],
+      ['BOBA FROG', '珍珠蛙', 'frog happy smile sprout'],
+      ['COTTON SHEEP', '綿羊', 'sheep dot smile flower blush'],
+      ['BERRY HAMSTER', '苺鼠', 'hamster heart smile cherry'],
+      ['PEBBLE PENGUIN', '小石企鹅', 'penguin dot flat bow'],
+      ['SPROUT DINO', '芽恐竜', 'horned happy smile sprout blush'],
+      ['BUBBLE JELLY', '泡泡水母', 'jelly happy o sparkle'],
+      ['TOFU CLOUD', '豆腐雲', 'cloud dot o sprout'],
+      ['KIT FOX', '子狐', 'fox shine smile flower'],
+      ['BUMBLE BABY', '熊蜂宝宝', 'bee dot smile sprout blush'],
+      ['SHIITAKE KID', '椎茸坊', 'cap happy smile - blush'],
+      ['DUMPLING', '小籠包', 'round happy o - blush'],
+    ],
+    places: [['wallpaper', 'COZY ROOM', '温馨小屋'], ['plasma', 'JELLY WORLD', '果凍世界'], ['hearts', 'PET CAFE', '寵物咖啡'],
+             ['rings', 'BUBBLE BATH', '泡泡浴'], ['zigzag', 'PICNIC PARK', '野餐公園']],
+  },
+  {
+    en: 'BUG GARDEN', jp: '虫の庭',
+    glyphs: '虫蝶蜂蟻蛍蜻蛉葉花草露苔茎蕾蜜粉翅羽森実',
+    palettes: ['garden', 'firefly', 'pastel', 'neopets'],
+    items: ['cherry', 'heart', 'potion'],
+    lucky: ['clover sticker', 'honey candy', 'flower hair pin', 'tiny magnifier'],
+    pets: [
+      ['FLUTTER BUTTERFLY', '蝶々', 'butterfly shine smile - blush'],
+      ['DOT LADYBUG', 'てんとう虫', 'ladybug happy smile - blush'],
+      ['MUNCH CATERPILLAR', '青虫', 'caterpillar dot smile sprout'],
+      ['RHINO BEETLE', '兜虫', 'beetle tall fang -'],
+      ['DREAMY DRAGONFLY', '蜻蛉', 'dragonfly star o -'],
+      ['HONEY BEE', '蜜蜂', 'bee happy smile flower blush'],
+      ['MOTH PRINCESS', '蛾姫', 'butterfly sleepy smile crown'],
+      ['BERRY BEETLE', '苺甲虫', 'beetle heart smile cherry'],
+      ['GLOW WORM', '蛍虫', 'caterpillar star smile sparkle'],
+      ['LOVE BUG', '恋虫', 'ladybug heart tongue bow'],
+      ['PUNK DRAGONFLY', 'パンク蜻蛉', 'dragonfly dizzy fang horns'],
+      ['FAIRY MOTH', '妖精蛾', 'butterfly wink smile halo blush'],
+    ],
+    places: [['stars', 'FIREFLY NIGHT', '蛍の夜'], ['hearts', 'FLOWER BED', '花壇'], ['zigzag', 'LEAF MAZE', '葉の迷路'],
+             ['spiral', 'HONEY SWIRL', '蜜の渦'], ['rain', 'MORNING DEW', '朝露']],
+  },
+  {
+    en: 'CORAL SEA', jp: '珊瑚海',
+    glyphs: '海波泡魚貝珊瑚潮渦鯨蛸蟹亀藻真珠水青深潜',
+    palettes: ['coral', 'abyss', 'lagoon', 'holo'],
+    items: ['heart', 'diamond', 'potion'],
+    lucky: ['pearl earring', 'seashell charm', 'mermaid glitter', 'blue marble'],
+    pets: [
+      ['OCTO BABY', '蛸ちゃん', 'octopus shine smile bow blush'],
+      ['PUFF PUFF', '河豚', 'puffer dizzy o -'],
+      ['SNIP CRAB', '蟹さん', 'crab happy smile -'],
+      ['BLUE WHALE', '鯨', 'whale sleepy smile - blush'],
+      ['SHELL TURTLE', '亀', 'turtle dot smile flower'],
+      ['AXOLOTL', 'ウーパールーパー', 'axolotl shine smile - blush'],
+      ['PEARL JELLY', '真珠水母', 'jelly happy smile sparkle'],
+      ['KING CRAB', '蟹王', 'crab tall fang crown'],
+      ['DJ OCTOPUS', 'DJ蛸', 'octopus star tongue party'],
+      ['SAILOR WHALE', '水兵鯨', 'whale wink smile beret'],
+      ['PRINCESS PUFFER', '河豚姫', 'puffer heart smile crown'],
+      ['SEA WITCH', '海の魔女', 'octopus sleepy smile witch'],
+    ],
+    places: [['rings', 'BUBBLE REEF', '泡の礁'], ['moire', 'DEEP ABYSS', '深海'], ['plasma', 'CORAL GARDEN', '珊瑚園'],
+             ['tunnel', 'WHIRLPOOL', '渦潮'], ['stripes', 'SUNNY SHALLOWS', '浅瀬']],
+  },
+];
+
+const PETS = [];
+WORLDS.forEach((w, wi) => {
+  w.petIds = w.pets.map(([en, jp, spec]) => {
+    const id = PETS.length;
+    const sprite = spec.startsWith('art:') ? spec.slice(4) : registerSprite(`pet${id}`, composePet(spec));
+    PETS.push({ id, en, jp, sprite, worldIndex: wi });
+    return id;
+  });
+});
+
+const STYLES = ['ramp', 'pixel', 'duo'];   // ASCII-density · 8-bit blocks · two-tone poster
+const SCENES = [];
+
+WORLDS.forEach((w, wi) => {
+  w.glyphArr = Array.from(w.glyphs);
+  w.petIds.forEach((petId, si) => w.places.forEach(([pattern, pen, pjp], pi) => {
+    const id = SCENES.length, pet = PETS[petId];
+    SCENES.push({
+      id, world: w, worldIndex: wi, pet, pattern,
+      friends: [1, 2, 3].map(k => w.petIds[(si + k * 4) % w.petIds.length]),
+      buddy: w.items[(si + pi) % w.items.length],
+      name: `${pet.en} · ${pen}`,
+      cjk: `${pet.jp}・${pjp}`,
+      palette: PALETTES[w.palettes[(si + pi) % w.palettes.length]],
+      style: STYLES[(si + pi * 2) % STYLES.length],
+      cycle: 0.8 + ((si * 5 + pi * 3) % 4) * 0.45,     // palette-cycling speed
+      bpm: 118 + (id * 7) % 24,
+    });
+  }));
+});
+
+// Derived colours, computed once per scene on first visit.
+// Pet codes: 1 body · 2 accent · 3 ink · 4 shine · 5 white sticker rim · 6 shadow · 7 dark rim
+function prepare(sc) {
+  if (sc.d) return sc.d;
+  const p = sc.palette;
+  const byLum = p.slice(1).sort((a, b) => lum(a) - lum(b));
+  const body = mix(byLum[3], '#ffffff', 0.3), accent = mix(byLum[1], p[0], 0.1);
+  sc.d = {
+    pal: p, n: p.length, glyphs: sc.world.glyphArr,
+    inkOn: p.map(c => mix(c, p[0], 0.45)),
+    pet:    { 1: body, 2: accent, 3: p[0], 4: '#ffffff', 5: '#ffffff', 6: mix(p[0], '#000000', 0.3), 7: p[0], 8: '#ff6fae' },
+    petInk: { 1: mix(body, p[0], 0.3), 2: mix(accent, p[0], 0.35), 3: mix(p[0], '#ffffff', 0.2),
+              4: mix('#ffffff', accent, 0.35), 5: mix('#ffffff', accent, 0.45), 6: mix(p[0], '#ffffff', 0.15), 8: '#ffd1ec' },
+  };
+  return sc.d;
+}
+
+
+/* ---------- 5. BACKGROUND FIELDS ------------------------------------- */
+// Each returns 0..1 for a cell. u,v = centred coords, r,a = polar, t = seconds.
+
+const FULL_TURN = Math.PI * 2;
+const PATTERNS = {
+  plasma: (u, v, r, a, t) =>
+    (Math.sin(u * 9 + t) + Math.sin(v * 8 - t * 1.3) + Math.sin((u + v) * 7 + t * 0.7) + Math.sin(r * 14 - t * 2)) / 8 + 0.5,
+
+  tunnel: (u, v, r, a, t) =>
+    frac(0.35 / (r + 0.03) + t * 0.6) * 0.6 + ((Math.floor(a / Math.PI * 6 + t * 0.5) & 1) ? 0.4 : 0),
+
+  spiral: (u, v, r, a, t) => frac(a / FULL_TURN * 3 + r * 5 - t * 0.7),
+
+  rings: (u, v, r, a, t) => frac(r * 9 + Math.sin(a * 6 + t) * 0.25 - t * 0.9),
+
+  checker: (u, v, r, a, t) => {
+    const x = u * 7 + Math.sin(v * 4 + t) * 0.8, y = v * 7 + Math.cos(u * 4 + t * 0.8) * 0.8;
+    return ((Math.floor(x) + Math.floor(y)) & 1) * 0.55 + frac((x + y) * 0.5) * 0.45;
+  },
+
+  rain: (u, v, r, a, t, i, j) => Math.pow(frac(j * 0.045 - t * (0.3 + hash(i, 7) * 0.8) + hash(i, 3)), 3),
+
+  grid: (u, v, r, a, t) => {
+    const h = v - 0.05;
+    if (h > 0) {                                        // perspective floor
+      const z = 0.25 / h;
+      return (frac(z * 0.8 - t * 1.2) < 0.12 || frac(u * z * 1.5) < 0.08) ? 1 : 0.15;
+    }
+    if (Math.hypot(u, h + 0.22) < 0.2) return frac(h * 18 + t * 0.4) < 0.7 ? 0.9 : 0.35;   // striped sun
+    return Math.max(0, 0.45 + h * 1.2);                 // sky gradient
+  },
+
+  moire: (u, v, r, a, t) => {
+    const d1 = Math.hypot(u - Math.sin(t * 0.5) * 0.3, v - Math.cos(t * 0.4) * 0.2);
+    const d2 = Math.hypot(u + Math.sin(t * 0.35) * 0.3, v + Math.cos(t * 0.6) * 0.2);
+    return Math.sin(d1 * 60) * Math.sin(d2 * 60) * 0.5 + 0.5;
+  },
+
+  stars: (u, v, r, a, t, i, j) => {
+    const h = hash(i, j);
+    if (h > 0.9) return 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(t * 3 + h * 80));
+    return frac(0.25 / (r + 0.05) - t * 0.4) < 0.1 ? 0.45 : 0.04;
+  },
+
+  kaleido: (u, v, r, a, t) => {
+    const seg = Math.PI / 4;
+    const b = Math.abs((((a + t * 0.2) % (2 * seg)) + 2 * seg) % (2 * seg) - seg);
+    const x = r * Math.cos(b), y = r * Math.sin(b);
+    return (Math.sin(x * 18 - t * 2) + Math.sin(y * 22 + t) + Math.sin((x + y) * 10 + t * 1.5)) / 6 + 0.5;
+  },
+
+  sunburst: (u, v, r, a, t) =>
+    ((Math.floor(a / FULL_TURN * 24 + t * 0.4 + Math.sin(r * 6 - t) * 0.5) & 1) ? 0.75 : 0.2) + frac(r * 3 - t * 0.5) * 0.25,
+
+  hearts: (u, v, r, a, t) => {
+    const x = (frac(u * 5 + t * 0.15) * 2 - 1) * 1.35;
+    const y = -(frac(v * 5 - t * 0.15) * 2 - 1) * 1.35 + 0.15;
+    const q = x * x + y * y - 1;
+    return q * q * q - x * x * y * y * y < 0 ? 0.75 + 0.2 * Math.sin(t * 3 + u * 5) : frac((u - v) * 4 + t * 0.3) * 0.35;
+  },
+
+  stripes: (u, v, r, a, t) => frac((u + v) * 6 + Math.sin(u * 3 + t) * 0.3 + t * 0.4),
+
+  zigzag: (u, v, r, a, t) => frac(v * 6 + Math.abs(frac(u * 5) - 0.5) * 1.6 - t * 0.5),
+
+  wallpaper: (u, v, r, a, t, i, j, sc) => {             // scrolling tiles of the world's relic item
+    const s = SPRITES[sc.buddy], tw = s.w + 3, th = s.h + 2;
+    const sx = i + Math.floor(t * 1.5), col = Math.floor(sx / tw), li = ((sx % tw) + tw) % tw;
+    const sy = j + (col & 1) * (th >> 1), row = Math.floor(sy / th), lj = sy % th;
+    const px = s.rows[lj] && s.rows[lj][li];
+    if (px && px !== '.') return 0.4 + Number(px) * 0.18;
+    return ((col + row) & 1) ? 0.16 : 0.03;
+  },
+};
+
+
+/* ---------- 6. GRID & PET LAYER -------------------------------------- */
+
+let L = null, cell = 16, half = 8;
+
+function buildLayout() {
+  cell = Math.max(7, Math.floor(Math.min(width, height) / CFG.gridCells));
+  half = cell / 2;
+  const cols = Math.ceil(width / cell), rows = Math.ceil(height / cell), N = cols * rows, M = Math.min(cols, rows);
+  L = {
+    cols, rows, S: Math.max(2, Math.round(M * 0.38 / 12)),      // main-pet pixel scale in cells
+    U: new Float32Array(N), V: new Float32Array(N), Rad: new Float32Array(N), Ang: new Float32Array(N),
+    code: new Uint8Array(N), owner: new Int8Array(N), gidx: new Uint16Array(N),
+    tear: new Int16Array(rows), melt: new Int16Array(cols),
+  };
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    const k = j * cols + i, u = (i + 0.5 - cols / 2) / M, v = (j + 0.5 - rows / 2) / M;
+    L.U[k] = u; L.V[k] = v; L.Rad[k] = Math.hypot(u, v); L.Ang[k] = Math.atan2(v, u);
+  }
+}
+
+// Where every pet is this frame: three small friends parading, one big star pet.
+function petStates(t, sc) {
+  const out = sc.friends.map((pid, k) => {
+    const pet = PETS[pid], sp = SPRITES[pet.sprite], dir = k & 1 ? -1 : 1, span = L.cols + sp.w + 6;
+    const pos = Math.floor(t * (1.6 + k * 0.5) + k * 17);
+    const i0 = ((pos * dir) % span + span) % span - sp.w - 3;
+    const j0 = Math.min(L.rows - sp.h - 2, Math.round(L.rows * [0.8, 0.9, 0.7][k] - sp.h / 2)) - (Math.floor(t * 2.4 + k) & 1);
+    return { pet, sp, S: 1, i0, j0, face: dir, main: false };
+  });
+
+  const pet = sc.pet, sp = SPRITES[pet.sprite], S = L.S;
+  const range = Math.max(0, Math.floor(Math.min(L.cols * 0.22, (L.cols - sp.w * S) / 2 - 2)));
+  const step = Math.floor(t * 2.2);
+  let off = 0, face = 1;
+  if (range > 0) {                                   // Tamagotchi-style stepping walk
+    const span = 2 * range, p = step % (2 * span);
+    off = (p < span ? p : 2 * span - p) - range;
+    face = p < span ? 1 : -1;
+  }
+  const main = {
+    pet, sp, S, face, main: true,
+    i0: Math.round(L.cols / 2 + off - sp.w * S / 2),
+    j0: Math.round(L.rows * 0.46 - sp.h * S / 2) - (step & 1),
+  };
+
+  // up to two of your own pets tag along (a different pair each scene):
+  // first on the left, second on the right, or below the star on narrow screens
+  const mine = customPets.length === 1 ? [customPets[0]]
+             : customPets.length > 1 ? [0, 1].map(k => customPets[(sc.id + k) % customPets.length]) : [];
+  mine.forEach((pet, k) => {
+    const csp = SPRITES[pet.sprite], left = main.i0 - csp.w - 3, right = main.i0 + sp.w * S + 3;
+    const sides = [left >= 1 ? left : null, right + csp.w < L.cols - 1 ? right : null].filter(v => v !== null);
+    const hop = (step + 1 + k) & 1;
+    let i0 = sides[k] ?? null, j0 = main.j0 + sp.h * S - csp.h - hop;
+    if (i0 === null) {
+      i0 = Math.round(L.cols / 2 + off * 0.5 + (mine.length === 1 ? -csp.w / 2 : k ? 1 : -csp.w - 1));
+      j0 = main.j0 + sp.h * S + 4 - hop;
+    }
+    out.push({ pet, sp: csp, S: 1, face, main: false, custom: true, i0, j0 });
+  });
+  out.push(main);
+  return out;
+}
+
+function buildPetLayer(pets) {
+  const { cols, rows, code, owner, gidx } = L;
+  code.fill(0); owner.fill(-1);
+  const set = (i, j, c, idx, g) => {
+    if (i < 0 || j < 0 || i >= cols || j >= rows) return;
+    const k = j * cols + i; code[k] = c; owner[k] = idx; gidx[k] = g;
+  };
+  pets.forEach((p, idx) => {
+    const W = p.sp.w * p.S, H = p.sp.h * p.S;
+    if (p.main) {
+      for (let dj = 0; dj < 2; dj++) for (let di = Math.round(W * 0.15); di < Math.round(W * 0.85); di++) set(p.i0 + di, p.j0 + H + dj, 6, idx, 0);
+    }
+    for (let dj = 0; dj < H; dj++) for (let di = 0; di < W; di++) {
+      const li0 = Math.floor(di / p.S), lj = Math.floor(dj / p.S), li = p.face < 0 ? p.sp.w - 1 - li0 : li0;
+      const px = p.sp.rows[lj][li];
+      if (px !== '.') set(p.i0 + di, p.j0 + dj, px === 'b' ? 8 : Number(px), idx, li * 7 + lj * 13 + p.pet.id);
+    }
+    outlineRing(p, idx, W, H, [1, 2, 3, 4, 8], 5);   // white sticker edge
+    outlineRing(p, idx, W, H, [5], 7);               // dark outer edge
+  });
+}
+
+function outlineRing(p, idx, W, H, from, to) {
+  const { cols, rows, code, owner } = L;
+  const isFrom = n => owner[n] === idx && from.includes(code[n]);
+  for (let j = p.j0 - 2; j < p.j0 + H + 2; j++) for (let i = p.i0 - 2; i < p.i0 + W + 2; i++) {
+    if (i < 0 || j < 0 || i >= cols || j >= rows) continue;
+    const k = j * cols + i;
+    if (owner[k] === idx && code[k] !== 6) continue;
+    if ((i > 0 && isFrom(k - 1)) || (i < cols - 1 && isFrom(k + 1)) ||
+        (j > 0 && isFrom(k - cols)) || (j < rows - 1 && isFrom(k + cols))) {
+      code[k] = to; owner[k] = idx;
+    }
+  }
+}
+
+
+/* ---------- 7. CELL PAINTERS ----------------------------------------- */
+
+let ctx, scanlines, lastPets = [];
+let order = [], sceneCursor = 0, prevD = null;
+let trans = 0, lastWarp = -1e9, lastShake = -1e9;
+let motionAsked = false, motionGranted = !NEEDS_MOTION_PERMISSION, menu = [];
+
+const current = () => SCENES[order[sceneCursor]];
+
+function block(x, y, color) { ctx.fillStyle = color; ctx.fillRect(x, y, cell, cell); }
+function glyph(x, y, ch, color) { ctx.fillStyle = color; ctx.fillText(ch, x + half, y + half); }
+
+function pickGlyph(i, j, t, d) {       // each cell slowly re-rolls its character
+  return d.glyphs[Math.floor(hash(i, j, Math.floor(t * 0.7 + hash(j, i) * 9)) * d.glyphs.length)];
+}
+
+function field(k, i, j, F) {           // background value with a slow hypnotic sway & breathe
+  const u0 = L.U[k], v0 = L.V[k];
+  const u = (u0 * F.cr - v0 * F.sr) * F.zoom, v = (u0 * F.sr + v0 * F.cr) * F.zoom;
+  const f = F.pat(u, v, L.Rad[k] * F.zoom, L.Ang[k] + F.rot, F.t, i, j, F.sc);
+  return f < 0 ? 0 : f > 0.999 ? 0.999 : f;
+}
+
+function backgroundCell(k, i, j, x, y, F) {
+  if (trans > 0 && hash(i, j, frameCount) < trans * 0.4) return glitchCell(i, j, x, y, F);
+  if (F.virus && virusCell(i, j, x, y, F)) return;
+  const { d, sc, t } = F, f = field(k, i, j, F);
+  const ci = 1 + Math.floor(f * 5 + t * sc.cycle) % (d.n - 1);         // palette cycling
+  if (sc.style === 'ramp') {
+    const ch = RAMP[Math.floor(f * RAMP.length)];
+    if (ch !== ' ') glyph(x, y, ch, d.pal[ci]);
+  } else if (sc.style === 'pixel') {
+    block(x, y, d.pal[ci]);
+    glyph(x, y, pickGlyph(i, j, t, d), d.inkOn[ci]);
+  } else if (f > 0.5) {
+    block(x, y, d.pal[1]);
+    glyph(x, y, pickGlyph(i, j, t, d), d.pal[0]);
+  } else {
+    glyph(x, y, f < 0.22 ? '・' : pickGlyph(i, j, t, d), d.pal[2 + Math.floor(f * 3 + t * sc.cycle) % (d.n - 2)]);
+  }
+}
+
+function petCell(k, i, j, x, y, F) {
+  if (trans > 0 && hash(i, j, frameCount) < trans * 0.25) return glitchCell(i, j, x, y, F);
+  const c = L.code[k], d = F.d, colors = lastPets[L.owner[k]].pet.colors || d;
+  block(x, y, colors.pet[c]);
+  if (c === 7) return;
+  const ch = c === 5 ? '♡' : c === 6 ? '・' : c === 4 ? '✦' : d.glyphs[L.gidx[k] % d.glyphs.length];
+  glyph(x, y, ch, colors.petInk[c]);
+}
+
+function drawNameTags(F) {                 // little plates above your own pets
+  const size = Math.max(10, Math.round(cell * 0.9));
+  ctx.textBaseline = 'top';
+  lastPets.filter(p => p.custom).forEach(p => {
+    label(`♡ ${p.pet.en}`, (p.i0 + p.sp.w / 2) * cell, (p.j0 - 2.2) * cell, size, 'center', F.d.pal);
+  });
+}
+
+function glitchCell(i, j, x, y, F) {
+  const pal = hash(i, j, frameCount + 1) < 0.5 ? F.d.pal : prevD.pal;
+  block(x, y, pal[1 + Math.floor(hash(j, i, frameCount) * (pal.length - 1))]);
+  glyph(x, y, GLITCH[Math.floor(hash(i, frameCount, j) * GLITCH.length)], pal[0]);
+}
+
+function drawEmote(F, p) {             // speech bubble above the big pet
+  const V = F.virus, t = F.t;
+  const e = oracle ? '札' : V ? (frameCount & 4 ? '菌' : '♡')
+          : Math.floor(t / 0.7) % 3 === 0 ? EMOTES[Math.floor(t / 2.1) % EMOTES.length] : null;
+  if (!e) return;
+  const size = Math.round(cell * p.S * 1.3);
+  ctx.font = `${size}px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  const w = ctx.measureText(e).width;
+  const x = Math.min(width - w - size, (p.i0 + p.sp.w * p.S + 0.5) * cell), y = Math.max(size, (p.j0 - 0.5) * cell);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x - size * 0.3, y - size * 0.2, w + size * 0.6, size * 1.4);
+  ctx.fillRect(x - size * 0.3, y + size * 1.2, size * 0.35, size * 0.35);
+  ctx.strokeStyle = F.d.pal[0]; ctx.lineWidth = 2;
+  ctx.strokeRect(x - size * 0.3, y - size * 0.2, w + size * 0.6, size * 1.4);
+  ctx.fillStyle = F.d.pet[2];
+  ctx.fillText(e, x, y);
+}
+
+
+/* ---------- 7b. THE CUTE VIRUS --------------------------------------- */
+
+let virus = null, nextVirus = 5000;
+
+function updateVirus(now) {
+  if (virus && now > virus.start + virus.dur) {
+    virus = null;
+    nextVirus = now + random(VIRUS.minGapMs, VIRUS.maxGapMs);
+  }
+  if (!virus && now > nextVirus) {
+    const main = random(VIRUS.types), types = new Set([main]);
+    if (main === 'popup') types.add(random(['hearts', 'kaomoji', 'clones']));
+    virus = {
+      types, start: now, dur: random(VIRUS.minDurMs, VIRUS.maxDurMs), seed: Math.floor(random(1e6)),
+      x: random(L.cols), y: random(L.rows),
+    };
+    if (types.has('popup') && !oracle && !fortune) {      // a cascade of error windows, classic-virus style
+      const fx = random(0.05, 0.45), fy = random(0.15, 0.4);
+      for (let q = 0; q < 4; q++) spawnPopup('error', { fx: fx + q * 0.05, fy: fy + q * 0.07 });
+    }
+    Sound.virus();
+  }
+  return virus && { ...virus, p: (now - virus.start) / virus.dur };
+}
+
+// Returns true when the virus has painted over this background cell.
+function virusCell(i, j, x, y, F) {
+  const V = F.virus, C = VIRUS.colors;
+
+  if (V.types.has('hearts')) {              // expanding ring of love
+    const r = Math.hypot(i - V.x, j - V.y), rad = V.p * Math.max(L.cols, L.rows) * 0.8;
+    if (r < rad && r > rad - 5 - hash(i, j, V.seed) * 4) {
+      block(x, y, C[(i + j + frameCount) % C.length]);
+      glyph(x, y, (i + j) & 1 ? '♥' : '愛', VIRUS.ink);
+      return true;
+    }
+  }
+
+  if (V.types.has('kaomoji') && hash(j, V.seed) < 0.22) {    // scrolling kaomoji banners
+    const s = VIRUS.kaomoji, dir = hash(j, V.seed, 1) < 0.5 ? 1 : -1;
+    const n = i + dir * Math.floor(F.t * 18), ch = s[((n % s.length) + s.length) % s.length];
+    block(x, y, C[Math.floor(hash(j, V.seed, 2) * C.length)]);
+    if (ch !== ' ') glyph(x, y, ch, VIRUS.ink);
+    return true;
+  }
+
+  if (V.types.has('clones')) {              // the pet multiplies
+    const sp = SPRITES[F.sc.pet.sprite], tw = sp.w + 3, th = sp.h + 2;
+    const gi = i + V.seed % tw + Math.round(Math.sin(F.t * 6 + j * 0.3) * 1.5), gj = j + (V.seed >> 4) % th;
+    const tx = Math.floor(gi / tw), ty = Math.floor(gj / th);
+    if (hash(tx, ty, V.seed) < V.p * 1.4) {
+      const px = sp.rows[((gj % th) + th) % th]?.[((gi % tw) + tw) % tw];
+      if (px && px !== '.') {
+        block(x, y, C[(tx + ty + (Number(px) || 2)) % C.length]);
+        glyph(x, y, F.d.glyphs[(i + j) % F.d.glyphs.length], VIRUS.ink);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function negativeD(sc) {                    // photo-negative palette, cached per scene
+  if (!sc.neg) sc.neg = prepare({ palette: sc.palette.map(invertHex), world: sc.world });
+  return sc.neg;
+}
+
+/* ---------- 7b². CUTE POP-UPS ---------------------------------------- */
+// Little windows that pop up on their own: errors, progress bars, achievements,
+// pet chats, pet status and toasts. They close by themselves; tap one to close it early.
+
+let popups = [], nextPopup = 3000;
+const POP_KINDS = ['error', 'error', 'loading', 'achievement', 'chat', 'chat', 'status', 'toast', 'toast'];
+const POP_STYLE = {                          // [body, drop shadow, title bar (null = rainbow)]
+  error:       ['#fff0fa', '#ff4fd8', null],
+  loading:     ['#f0fdff', '#3a86ff', '#7dfcff'],
+  achievement: ['#fffbe6', '#c9a227', '#ffd166'],
+  chat:        ['#f5fff0', '#70e000', '#b8ff5c'],
+  status:      ['#f7f0ff', '#9d4edd', '#c9a7ff'],
+  toast:       ['#2a0018', '#ff4fd8', null],
+};
+
+function popFill(s) {
+  return s.replace('{pet}', titleCase(current().pet.en))
+          .replace('{time}', new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+}
+
+function spawnPopup(kind = random(POP_KINDS), at = null) {
+  const pick = list => list[Math.floor(Math.random() * list.length)];
+  const p = { kind, born: millis(), life: random(POPUPS.minLifeMs, POPUPS.maxLifeMs),
+              fx: at ? at.fx : random(0.04, 0.7), fy: at ? at.fy : random(0.14, 0.72) };
+  if (kind === 'error')       Object.assign(p, { title: `♡ ${pick(POPUPS.apps)}`, lines: pick(POPUPS.errors).map(popFill), buttons: pick(POPUPS.buttons) });
+  if (kind === 'loading')     Object.assign(p, { title: '♡ PROGRESS', task: `${pick(POPUPS.loading)}…`, done: `COMPLETE! ${pick(POPUPS.loaded)}` });
+  if (kind === 'achievement') Object.assign(p, { title: '★ ACHIEVEMENT UNLOCKED ★', lines: [popFill(pick(POPUPS.achievements)), `+${10 + Math.floor(Math.random() * 90)} SPARKLE POINTS`] });
+  if (kind === 'chat') {
+    const pet = pick(PETS);
+    Object.assign(p, { pet, title: `✉ ${pet.en}`, lines: [popFill(pick(POPUPS.chats))], colors: petColors(pick(STUDIO_COLORS)[1]).pet });
+  }
+  if (kind === 'status') {
+    Object.assign(p, { title: `${current().pet.en} STATUS`,
+      lines: shuffle(POPUPS.stats.slice()).slice(0, 3).map(n => { const v = 1 + Math.floor(Math.random() * 5); return `${n.padEnd(8, ' ')}${'♥'.repeat(v)}${'♡'.repeat(5 - v)}`; }) });
+  }
+  if (kind === 'toast')       Object.assign(p, { lines: [pick(POPUPS.toasts)] });
+  popups.push(p);
+  if (popups.length > POPUPS.maxOpen + 4) popups.shift();
+  Sound.blip();
+}
+
+function updatePopups(now) {
+  popups = popups.filter(p => now - p.born < p.life);
+  if (now > nextPopup) {
+    if (popups.length < POPUPS.maxOpen && !oracle && !fortune && !panelOpen()) spawnPopup();
+    nextPopup = now + random(POPUPS.minGapMs, POPUPS.maxGapMs);
+  }
+}
+
+function popupLines(p, age) {               // body text right now (progress bars count up)
+  if (p.kind !== 'loading') return p.lines;
+  const pct = Math.min(100, Math.floor(age / (p.life * 0.65) * 100));
+  return [p.task, pct < 100 ? `${pct}%` : p.done];
+}
+
+function popupSize(p, s) {
+  const pad = s * 0.9, sprite = p.kind === 'chat' ? SPRITES[p.pet.sprite] : null, px = Math.max(2, Math.floor(s / 4));
+  const lines = p.kind === 'loading' ? [p.task, p.done] : p.lines;
+  ctx.font = `${s}px ${FONT}`;
+  const spriteW = sprite ? sprite.w * px + s * 0.8 : 0;
+  let w = Math.max(...lines.map(l => ctx.measureText(l).width)) + pad * 2 + spriteW;
+  if (p.title) w = Math.max(w, ctx.measureText(p.title).width + s * 3);
+  if (p.buttons) w = Math.max(w, p.buttons.reduce((sum, b) => sum + ctx.measureText(b).width + s * 1.5, pad * 1.4));
+  let h = (p.title ? s * 1.6 : 0) + pad * 1.2 + lines.length * s * 1.5;
+  if (p.kind === 'loading') h += s * 1.8;
+  if (p.kind === 'error') h += s * 2.2;
+  if (sprite) h = Math.max(h, s * 1.6 + pad * 1.4 + sprite.h * px);
+  return { w: Math.round(w), h: Math.round(h), pad, spriteW, px };
+}
+
+function drawPopups(F) {
+  const s = Math.max(12, Math.round(cell)), m = Math.max(14, cell), now = millis();
+  popups.forEach(p => {
+    const age = now - p.born, { w, h, pad, spriteW, px } = popupSize(p, s);
+    const x = Math.round(constrain(p.fx * width, m, width - w - m)), y = Math.round(constrain(p.fy * height, m, height - h - m));
+    p.rect = { x, y, w, h };
+    const pop = Math.min(1, age / 240), k = pop - 1;
+    const scale = (0.5 + 0.5 * (1 + 2.7 * k * k * k + 1.7 * k * k)) * Math.min(1, (p.life - age) / 250);   // pop in, shrink out
+    const jiggle = p.kind === 'error' && age < 500 ? Math.sin(age * 0.09) * 3 : 0;
+    ctx.save();
+    ctx.translate(x + w / 2 + jiggle, y + h / 2); ctx.scale(scale, scale); ctx.translate(-w / 2, -h / 2);
+    drawPopupBody(p, w, h, s, pad, spriteW, px, F.t, age);
+    ctx.restore();
+  });
+}
+
+function drawPopupBody(p, w, h, s, pad, spriteW, px, t, age) {
+  const [body, shadow, bar] = POP_STYLE[p.kind], ink = VIRUS.ink, dark = p.kind === 'toast';
+  ctx.font = `${s}px ${FONT}`; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+  ctx.fillStyle = shadow; ctx.fillRect(s * 0.45, s * 0.45, w, h);                  // kitsch drop shadow
+  ctx.fillStyle = body; ctx.fillRect(0, 0, w, h);
+  let y = 0;
+  if (p.title) {
+    ctx.fillStyle = bar || VIRUS.colors[Math.floor(t * 8) % VIRUS.colors.length];
+    ctx.fillRect(0, 0, w, s * 1.6);
+    ctx.fillStyle = ink; ctx.fillRect(0, s * 1.6, w, 2);
+    ctx.fillText(p.title, pad * 0.5, s * 0.3);
+    ctx.textAlign = 'right'; ctx.fillText('×', w - pad * 0.5, s * 0.3); ctx.textAlign = 'left';
+    y = s * 1.6;
+  }
+  ctx.strokeStyle = dark ? '#ff4fd8' : ink; ctx.lineWidth = 2; ctx.strokeRect(1, 1, w - 2, h - 2);
+  y += pad * 0.7;
+
+  if (p.kind === 'chat') {                  // the pet who is texting you
+    const sp = SPRITES[p.pet.sprite], bob = (Math.floor(t * 3) & 1) * px;
+    sp.rows.forEach((row, r) => Array.from(row).forEach((ch, q) => {
+      if (ch !== '.') { ctx.fillStyle = p.colors[ch]; ctx.fillRect(pad * 0.6 + q * px, y + r * px + bob, px, px); }
+    }));
+  }
+
+  const tx = pad + spriteW, lines = popupLines(p, age);
+  ctx.fillStyle = dark ? '#ffffff' : ink;
+  if (p.kind === 'loading') {
+    const pct = Math.min(100, Math.floor(age / (p.life * 0.65) * 100)), bw = w - pad * 2;
+    ctx.fillText(lines[0], tx, y);
+    y += s * 1.5;
+    ctx.strokeStyle = ink; ctx.strokeRect(tx, y, bw, s * 1.2);
+    ctx.fillStyle = '#ff4fd8'; ctx.fillRect(tx + 3, y + 3, Math.max(0, (bw - 6) * pct / 100), s * 1.2 - 6);
+    ctx.fillStyle = '#ffffff'; ctx.fillText('♥', tx + 3 + Math.max(0, (bw - 6) * pct / 100 - s), y + s * 0.1);
+    y += s * 1.8;
+    ctx.fillStyle = ink; ctx.fillText(lines[1], tx, y);
+  } else {
+    lines.forEach((line, q) => {
+      if (p.kind === 'achievement' && q === 1) ctx.fillStyle = '#a3123f';
+      ctx.fillText(line, tx, y + q * s * 1.5);
+    });
+  }
+
+  if (p.kind === 'error') {                 // buttons that all say yes, laid out right to left
+    let bx = w - pad * 0.7;
+    const by = h - s * 2.1;
+    p.buttons.forEach(b => {
+      const bw = ctx.measureText(b).width + s;
+      bx -= bw;
+      ctx.fillStyle = '#ffd1ec'; ctx.fillRect(bx, by, bw, s * 1.5);
+      ctx.strokeStyle = ink; ctx.strokeRect(bx, by, bw, s * 1.5);
+      ctx.fillStyle = ink; ctx.fillText(b, bx + s * 0.5, by + s * 0.25);
+      bx -= s * 0.5;
+    });
+  }
+}
+
+function popupTap(x, y) {                   // tap a pop-up to close it; returns true if one was hit
+  for (let q = popups.length - 1; q >= 0; q--) {
+    const r = popups[q].rect;
+    if (r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+      popups.splice(q, 1);
+      Sound.blip();
+      return true;
+    }
+  }
+  return false;
+}
+
+
+/* ---------- 7c. VIBE READING ----------------------------------------- */
+// Everything the portal can sense about the visitor, turned into traits that
+// personalise each oracle message. Nothing leaves the device.
+
+const Persona = {
+  t0: Date.now(), warps: 0, shakes: 0, taps: 0, cardsSession: 0, cardsEver: 0,
+  lastWarpAt: 0, gaps: [], dwell: WORLDS.map(() => 0), visits: 1, daysAway: 0,
+
+  load() {
+    const s = readLocal('relic.persona', {});
+    this.visits = (s.visits || 0) + 1;
+    this.daysAway = s.last ? Math.floor((Date.now() - s.last) / 864e5) : 0;
+    this.cardsEver = s.cards || 0;
+    this.save();
+  },
+  save() { writeLocal('relic.persona', { visits: this.visits, last: Date.now(), cards: this.cardsEver }); },
+  noteWarp(source) {
+    const now = Date.now();
+    if (this.lastWarpAt) this.gaps = [...this.gaps.slice(-9), (now - this.lastWarpAt) / 1000];
+    this.lastWarpAt = now;
+    this.warps++;
+    if (source === 'shake') this.shakes++; else this.taps++;
+  },
+  noteCard() { this.cardsSession++; this.cardsEver++; this.save(); },
+};
+
+const TIME_TRAITS = {
+  witching:  'WITCHING-HOUR SOUL', dawn: 'EARLY BIRD', morning: 'MORNING STAR',
+  afternoon: 'AFTERNOON DREAMER', evening: 'GOLDEN-HOUR SOUL', night: 'NIGHT OWL',
+};
+
+const OPENERS = {
+  witching:  ['{greet}, 3AM wanderer. At {time} only brave souls pull cards.',
+              'Nobody else is awake at {time}. The portal chose you on purpose.',
+              '{time}? The veil is thinnest right now, and you walked right through it.'],
+  dawn:      ['Up at {time}? Early birds get the rare drops.',
+              "{greet}, dawn walker. The day hasn't loaded yet and you're already here.",
+              'A {day} sunrise reading at {time}. Fresh luck, still warm.'],
+  morning:   ['{greet}! A {day} morning fortune, served warm at {time}.',
+              'Morning energy at {time}: bright, a little sleepy, very cute.',
+              "It's {time} and your aura is still buffering. Let {pet} help."],
+  afternoon: ['{time} on a {day}: the afternoon slump can\'t find you here.',
+              'Afternoon daydreamer spotted at {time}. Your snacks miss you.',
+              '{greet}. {day} afternoon, and the sun is at your back.'],
+  evening:   ['Golden hour at {time}. Your glow is not a filter.',
+              '{day} evening at {time}: the city lights sync with your mood.',
+              '{greet}, twilight soul. The portal hums softer at {time}.'],
+  night:     ['{greet}, night owl. {time} and still portal-hopping: the moon is taking notes.',
+              "It's {time}. The stars stayed up just to watch you.",
+              'Late {day} at {time}. Night thoughts are secretly wise.'],
+  monday:    ["It's Monday, so this card comes with extra armor.", 'Monday again? {pet} brought you a tiny shield.'],
+  friday:    ['Friday mode unlocked: the stars are wearing sequins.', "It's Friday. {pet} is already in party shoes."],
+  weekend:   ['Weekend soul: no alarms, only portals.', 'A lazy {day} is the best time for fortunes.'],
+  first:     ['First time through the portal? The pets have been waiting for you.',
+              'A brand new soul! {pet} saved you the softest seat.'],
+  returning: ["Visit #{v}. The pets remember your scent (it's glitter).", 'Welcome back for visit #{v}. Your cursor feels familiar.'],
+  regular:   ["Visit #{v}. You're basically a portal resident now.", '{v} visits! {pet} is drafting your honorary citizenship.'],
+  longlost:  ['{gap} days away! {pet} kept your seat warm the whole time.', 'After {gap} days, the portal wiggles with joy to see you.'],
+  restless:  ['{n} warps already. You collect worlds like stickers.', 'You warp fast, like a shuffle button with a heart.'],
+  gazer:     ['You linger in each world. Slow looking is a rare talent.', 'You stay and stare. The portal loves being looked at.'],
+  drifter:   ['You float between worlds at a dreamy tempo, like a jellyfish.', '{n} worlds visited at the perfect drifting speed.'],
+  shaker:    ['You shake your phone like a snow globe of destiny.', '{s} shakes so far. Destiny is a little dizzy, in a good way.'],
+  deep:      ['{min} minutes in the portal. Time here is bendy, like taffy.', "You've been here {min} minutes. The void thinks you're cute."],
+  addict:    ['Card #{c} this visit. The oracle blushes: you really like her.', '{c} cards pulled! Fortune collector energy.'],
+};
+
+const VOICES = {
+  phone:     ['{pet} says: hold your phone like a tiny shrine today.', "{pet} rode in your pocket and says you're doing great."],
+  desk:      ['{pet} says: stretch your wrists, desk wizard.', '{pet} peeks over your monitor: drink some water, please.'],
+  dark:      ['{pet} loves your dark mode. Mysterious people get softer luck.', 'In your dark theme, {pet} glows like a nightlight.'],
+  light:     ['{pet} squints at your bright screen and approves of your sunny heart.', 'Light mode, light heart: {pet} is impressed.'],
+  listening: ['{pet} hums along with the water. Listen for a sign in a song.', 'The void music likes you back. {pet} is dancing a little.'],
+  silent:    ['{pet} likes your quiet. Secrets arrive in silence.', 'You watch in silence, and {pet} respects the mystery.'],
+  fav0:      ['{pet} notices you keep returning to neon streets. Your future is electric.'],
+  fav1:      ['{pet} sees a quest-seeker. A small adventure hides in your week.'],
+  fav2:      ['{pet} knows style is your spell. Wear the loud outfit.'],
+  fav3:      ['{pet} says soft things protect you. Hug a plush, or a person.'],
+  fav4:      ['{pet} sees a tiny-world noticer. Look closely at small things today.'],
+  fav5:      ['{pet} says you have an ocean heart: go with the flow, then make waves.'],
+  spring:    ['{pet} smells spring {el} energy: plant a tiny wish.'],
+  summer:    ['Summer {el} energy: {pet} says go somewhere with water.'],
+  autumn:    ['Autumn {el} energy: {pet} says let one old thing fall.'],
+  winter:    ['Winter {el} energy: {pet} says rest counts as progress.'],
+  transition: ['Between seasons, {pet} says: stand in the doorway and choose.'],
+};
+
+const ACTIONS = [                            // by element: wood, fire, earth, metal, water
+  ['water a plant, or a friendship', 'wear something green', 'start the thing you keep postponing'],
+  ['send a heart to someone surprising', 'light a candle and make a wish', 'dance to exactly one song'],
+  ['eat something sweet and golden', 'tidy one tiny corner', 'take a slow walk without your phone'],
+  ['polish your shoes or your playlist', 'say no to one thing, kindly', 'wear something shiny'],
+  ['drink a glass of water like a potion', 'take a long bath', 'text someone you miss'],
+];
+
+function timeKey(h) {
+  return h < 4 ? 'witching' : h < 7 ? 'dawn' : h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 21 ? 'evening' : 'night';
+}
+
+// Season follows the bazi month's element (solar calendar): 木 spring, 火 summer, 金 autumn,
+// 水 winter, and 土 months are the in-between "doorway" weeks.
+function seasonKey(cal) {
+  return ['spring', 'summer', 'transition', 'autumn', 'winter'][cal.monthElement];
+}
+
+function greeting(h) {
+  const G = { ja: h < 11 ? 'おはよう' : h < 18 ? 'こんにちは' : 'こんばんは', zh: '你好', es: 'hola', fr: 'coucou',
+              pt: 'oi', ko: '안녕', it: 'ciao', de: 'hallo' };
+  return G[(navigator.language || 'en').slice(0, 2)] || 'hey';
+}
+
+function readVibe(pet, el, cal) {
+  const P = Persona, now = new Date(), h = now.getHours(), wd = now.getDay();
+  const tk = timeKey(h), trait = (key, label) => ({ key, label });
+  const openers = [trait(tk, TIME_TRAITS[tk])];
+
+  if (wd === 1) openers.push(trait('monday', 'MONDAY WARRIOR'));
+  else if (wd === 5) openers.push(trait('friday', 'FRIDAY SPARKLE'));
+  else if (wd === 0 || wd === 6) openers.push(trait('weekend', 'WEEKEND SOUL'));
+
+  if (P.daysAway >= 7) openers.push(trait('longlost', 'LONG-LOST FRIEND'));
+  else if (P.visits === 1) openers.push(trait('first', 'NEW SOUL'));
+  else if (P.visits >= 6) openers.push(trait('regular', 'PORTAL REGULAR'));
+  else openers.push(trait('returning', 'RETURNING SPIRIT'));
+
+  if (P.gaps.length >= 3) {
+    const avg = P.gaps.reduce((a, b) => a + b, 0) / P.gaps.length;
+    openers.push(avg < 4 ? trait('restless', 'RESTLESS WARPER') : avg > 15 ? trait('gazer', 'SLOW GAZER') : trait('drifter', 'DREAMY DRIFTER'));
+  }
+  if (P.shakes >= 3 && P.shakes >= P.taps) openers.push(trait('shaker', 'SNOW-GLOBE SHAKER'));
+  const mins = Math.floor((Date.now() - P.t0) / 60000);
+  if (mins >= 10) openers.push(trait('deep', 'DEEP DIVER'));
+  if (P.cardsSession >= 4) openers.push(trait('addict', 'FORTUNE COLLECTOR'));
+
+  const voices = [
+    IS_COARSE ? trait('phone', 'POCKET TRAVELER') : trait('desk', 'DESK WIZARD'),
+    matchMedia('(prefers-color-scheme: dark)').matches ? trait('dark', 'DARK-MODE MYSTIC') : trait('light', 'SUNLIT SOUL'),
+    Sound.started && Sound.on ? trait('listening', 'VOID LISTENER') : trait('silent', 'SILENT WATCHER'),
+    trait(seasonKey(cal), seasonKey(cal) === 'transition' ? 'DOORWAY CHILD' : `${seasonKey(cal).toUpperCase()} CHILD`),
+  ];
+  const most = Math.max(...P.dwell);
+  if (most > 20) {
+    const fav = P.dwell.indexOf(most);
+    voices.push(trait(`fav${fav}`, ['NEON HEART', 'QUEST HEART', 'GLAM HEART', 'SOFT HEART', 'BUG HEART', 'OCEAN HEART'][fav]));
+  }
+
+  const vars = {
+    greet: greeting(h), pet: titleCase(pet.en), el: el.en.toLowerCase(),
+    year: titleCase(yearName(cal)), yel: ELEMENTS[STEMS[cal.year.stem][2]].en.toLowerCase(),
+    time: now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+    day: now.toLocaleDateString('en-US', { weekday: 'long' }),
+    v: P.visits, gap: P.daysAway, n: P.warps, s: P.shakes, min: mins, c: P.cardsSession,
+  };
+  return { time: openers[0], openers, voices, vars, closerPrefix:
+    { witching: 'Before you sleep', night: 'Before you sleep', dawn: 'Before noon', morning: 'Before noon',
+      afternoon: 'Before sunset', evening: 'Before midnight' }[tk] };
+}
+
+// opener (who you seem to be) + bazi core + pet's voice + a tiny ritual.
+// Every reading is checked against past readings on this device, so none repeat.
+// Every reading opens with the calendar (day of the year, year pillar, solar term)
+// and how the pet meets this year, then the visitor's vibe, the day's Ten God, and
+// either the pet's voice or a tiny ritual.
+function composeReading(pet, el, god, cal, yearRel) {
+  const V = readVibe(pet, el, cal), seen = new Set(readLocal('relic.seen', []));
+  const base = strHash(`${pet.id}|${cal.dayIdx}|${Persona.cardsSession}|${Date.now()}`);
+  const pick = (list, r) => list[Math.floor(r * list.length)];
+  const fill = s => s.replace(/\{(\w+)\}/g, (_, k) => V.vars[k] ?? '');
+  const [, , termJp, termEn, termAdvice] = cal.term;
+  const calendarLine = `Day ${cal.doy} of ${cal.gregorianYear}, the ${titleCase(yearName(cal))} year, in ${termJp} ${titleCase(termEn)}: ${termAdvice}.`;
+  let reading;
+  for (let v = 0; v < 60; v++) {
+    const r = k => hash(base, v, k);
+    const oT = pick(V.openers, r(1)), vT = pick(V.voices, r(2));
+    const last = r(7) < 0.5 ? pick(VOICES[vT.key], r(5)) : `${V.closerPrefix}, ${pick(ACTIONS[ELEMENTS.indexOf(el)], r(6))}.`;
+    const parts = [calendarLine, pick(YEAR_LINES[yearRel], r(8)), pick(OPENERS[oT.key], r(3)), pick(god.lines, r(4)), last];
+    const text = parts.map(fill).map(capitalize).join(' ');
+    const traits = [V.time, oT, vT].filter((tr, q, a) => a.findIndex(x => x.key === tr.key) === q);
+    reading = { text, traits };
+    if (!seen.has(strHash(text))) break;
+  }
+  writeLocal('relic.seen', [...seen, strHash(reading.text)].slice(-500));
+  return reading;
+}
+
+
+/* ---------- 7d. BAZI ORACLE CARDS (八字神諭) --------------------------- */
+// Each pet carries a pillar (stem + branch) that shifts daily. Its element is read
+// against today's day pillar through the five-element cycle, a playful
+// "Ten Gods" reading, then personalised with the visitor's vibe.
+
+const STEMS = [['甲', 'YANG WOOD', 0], ['乙', 'YIN WOOD', 0], ['丙', 'YANG FIRE', 1], ['丁', 'YIN FIRE', 1],
+               ['戊', 'YANG EARTH', 2], ['己', 'YIN EARTH', 2], ['庚', 'YANG METAL', 3], ['辛', 'YIN METAL', 3],
+               ['壬', 'YANG WATER', 4], ['癸', 'YIN WATER', 4]];
+const BRANCHES = [['子', 'RAT', '鼠'], ['丑', 'OX', '牛'], ['寅', 'TIGER', '虎'], ['卯', 'RABBIT', '兎'],
+                  ['辰', 'DRAGON', '龍'], ['巳', 'SNAKE', '蛇'], ['午', 'HORSE', '馬'], ['未', 'GOAT', '羊'],
+                  ['申', 'MONKEY', '猴'], ['酉', 'ROOSTER', '鶏'], ['戌', 'DOG', '犬'], ['亥', 'PIG', '猪']];
+const ELEMENTS = [                         // generating cycle: wood → fire → earth → metal → water → wood
+  { jp: '木', en: 'WOOD',  color: '#7ddc8a', deep: '#1f6b3a', lucky: 'JADE GREEN',    dir: 'EAST 東',   nums: '3 · 8' },
+  { jp: '火', en: 'FIRE',  color: '#ff7b9c', deep: '#a3123f', lucky: 'CHERRY RED',    dir: 'SOUTH 南',  nums: '2 · 7' },
+  { jp: '土', en: 'EARTH', color: '#f2c46d', deep: '#7a5410', lucky: 'HONEY GOLD',    dir: 'CENTER 中', nums: '5 · 10' },
+  { jp: '金', en: 'METAL', color: '#e4e4f2', deep: '#4b4f6b', lucky: 'CHROME WHITE',  dir: 'WEST 西',   nums: '4 · 9' },
+  { jp: '水', en: 'WATER', color: '#86cdff', deep: '#123f7a', lucky: 'MIDNIGHT BLUE', dir: 'NORTH 北',  nums: '1 · 6' },
+];
+const TEN_GODS = {
+  resource:   { jp: '印綬', en: 'RESOURCE',   luck: '大吉', lines: [
+    'Today the {el} flows toward you: accept every snack offered.',
+    'A soft power recharges you. Resting is also a spell.',
+    'Someone wise leaves you a clue. Keep it like a rare item.',
+    'Your battery refills from kindness. Let people help.',
+    'Old lessons return as gifts. Study something cute.'] },
+  companion:  { jp: '比肩', en: 'COMPANION',  luck: '中吉', lines: [
+    'Twin energy online: co-op mode is unlocked.',
+    'Same element, double sparkle. Dress as a matching set.',
+    'Friends boost your stats today, but share the loot.',
+    'A mirror soul is nearby. Say hi first.',
+    'Your crew is your armor. Group chat is sacred today.'] },
+  expression: { jp: '食神', en: 'EXPRESSION', luck: '吉', lines: [
+    'Your inner idol wants a stage. Sing, post, decorate.',
+    'Creativity drips like neon rain. Make something useless and beautiful.',
+    'Say the cute thing out loud. It lands.',
+    'Your words have glitter in them today. Write a note.',
+    'Play is your productivity. Doodle through the meeting.'] },
+  wealth:     { jp: '正財', en: 'WEALTH',     luck: '小吉', lines: [
+    'Coins hide in small places. Check old pockets and inventories.',
+    "A good trade appears. Swap, don't hoard.",
+    'Treat yourself, but only one sparkly thing.',
+    'You shape your luck with your hands today. Build, fix, arrange.',
+    'Value hides in the ordinary. Notice the small prizes.'] },
+  authority:  { jp: '正官', en: 'AUTHORITY',  luck: '末吉', lines: [
+    "A boss battle, but you're overleveled. Stand tall.",
+    'Rules feel tight like new shoes. They soften by night.',
+    'Discipline is your secret accessory today.',
+    'Someone tests you. Answer with calm, cute confidence.',
+    'Pressure makes diamonds, and you are very shiny.'] },
+};
+
+let oracle = null;
+
+// The 24 solar terms (節気) with approximate Gregorian start dates (±1 day). Even indices
+// are the "jie" terms that open each bazi month; 立春 (index 2) also opens the bazi year.
+const SOLAR_TERMS = [
+  [1, 6, '小寒', 'MINOR COLD', 'the cold is gentle, so wrap one kind thought around yourself'],
+  [1, 20, '大寒', 'MAJOR COLD', 'the deepest chill before spring: rest is your superpower'],
+  [2, 4, '立春', 'START OF SPRING', 'new-year energy sprouts, so start one tiny ritual'],
+  [2, 19, '雨水', 'RAIN WATER', 'soft rain softens hearts, so forgive something small'],
+  [3, 6, '驚蟄', 'AWAKENING OF INSECTS', 'sleeping things wake up, so revive an old hobby'],
+  [3, 21, '春分', 'SPRING EQUINOX', 'day and night are equal, so balance work and play'],
+  [4, 5, '清明', 'CLEAR AND BRIGHT', 'the sky is clear, so tidy your space, then your mind'],
+  [4, 20, '穀雨', 'GRAIN RAIN', 'seeds drink the rain, so feed your big idea'],
+  [5, 6, '立夏', 'START OF SUMMER', 'summer switches on, so say yes to something bright'],
+  [5, 21, '小満', 'GRAIN BUDS', 'almost full, not yet: enjoy the waiting'],
+  [6, 6, '芒種', 'GRAIN IN EAR', 'planting time: work now, sparkle later'],
+  [6, 21, '夏至', 'SUMMER SOLSTICE', 'this is the longest light, so let yourself be seen'],
+  [7, 7, '小暑', 'MINOR HEAT', 'warmth rises, so keep a cool drink and a cool head'],
+  [7, 23, '大暑', 'MAJOR HEAT', 'peak heat: slow down like a sleepy cat'],
+  [8, 8, '立秋', 'START OF AUTUMN', 'the first cool breeze arrives, so let go of one habit'],
+  [8, 23, '処暑', 'END OF HEAT', 'the heat retires, so finish what you started'],
+  [9, 8, '白露', 'WHITE DEW', 'dew sits on the grass, so notice tiny beautiful things'],
+  [9, 23, '秋分', 'AUTUMN EQUINOX', 'day and night are equal, so balance giving and receiving'],
+  [10, 8, '寒露', 'COLD DEW', 'crisp air brings clear goals, so write one down'],
+  [10, 23, '霜降', "FROST'S DESCENT", 'frost arrives, so wear something cozy and bold'],
+  [11, 7, '立冬', 'START OF WINTER', 'winter begins, so store energy like a squirrel'],
+  [11, 22, '小雪', 'MINOR SNOW', 'first-snow energy: make a quiet wish'],
+  [12, 7, '大雪', 'MAJOR SNOW', 'deep snow brings deep dreams, so sleep early'],
+  [12, 22, '冬至', 'WINTER SOLSTICE', 'the longest night turns toward light: hope wins'],
+];
+const BRANCH_ELEMENT = [4, 2, 0, 0, 2, 1, 1, 2, 3, 3, 2, 4];   // 子水 丑土 寅木 卯木 辰土 巳火 午火 未土 申金 酉金 戌土 亥水
+
+// Sexagenary day index; 2000-01-01 was a 戊午 day (index 54).
+function dayPillarIndex(date = new Date()) {
+  const days = Math.floor((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(2000, 0, 1)) / 86400000);
+  return ((54 + days) % 60 + 60) % 60;
+}
+
+// The Four Pillars (四柱) of this exact moment, plus solar term and day of the year.
+function baziCalendar(date = new Date()) {
+  const y = date.getFullYear(), m = date.getMonth() + 1, d = date.getDate(), h = date.getHours();
+  let term = 23;                                              // before 小寒: still last year's 冬至
+  SOLAR_TERMS.forEach(([tm, td], q) => { if (m > tm || (m === tm && d >= td)) term = q; });
+
+  const baziYear = y - (m < 2 || (m === 2 && d < 4) ? 1 : 0);  // the bazi year turns at 立春
+  const yearIdx = ((baziYear - 1984) % 60 + 60) % 60;          // 1984 = 甲子
+  const monthBranch = ((term - (term % 2)) / 2 + 1) % 12;      // 小寒 → 丑, 立春 → 寅, … 大雪 → 子
+  const monthStem = ((yearIdx % 10) % 5 * 2 + 2 + (monthBranch + 10) % 12) % 10;
+  const dayIdx = dayPillarIndex(h >= 23 ? new Date(y, m - 1, d + 1) : date);   // day turns at 子 hour (23:00)
+  const hourBranch = Math.floor((h + 1) / 2) % 12;
+  const hourStem = ((dayIdx % 10) % 5 * 2 + hourBranch) % 10;
+
+  const doy = Math.floor((Date.UTC(y, m - 1, d) - Date.UTC(y, 0, 1)) / 86400000) + 1;
+  const yearDays = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 366 : 365;
+  const pillar = (stem, branch) => ({ stem, branch, text: STEMS[stem][0] + BRANCHES[branch][0] });
+  return {
+    year: pillar(yearIdx % 10, yearIdx % 12), month: pillar(monthStem, monthBranch),
+    day: pillar(dayIdx % 10, dayIdx % 12), hour: pillar(hourStem, hourBranch),
+    dayIdx, term: SOLAR_TERMS[term], monthElement: BRANCH_ELEMENT[monthBranch],
+    doy, yearDays, gregorianYear: y,
+  };
+}
+
+function relation(pet, day) {              // how the pet's element meets today's day master
+  if (pet === day) return 'companion';
+  if ((pet + 1) % 5 === day) return 'resource';     // pet nourishes you
+  if ((day + 1) % 5 === pet) return 'expression';   // you pour into the pet
+  if ((day + 2) % 5 === pet) return 'wealth';       // you shape it
+  return 'authority';                               // it shapes you
+}
+
+// How the pet's element meets the year's element: always part of the reading.
+const YEAR_LINES = {
+  companion:  ['You and the {year} year share the same {yel} blood, so move with its wave.',
+               'The {year} year is your twin this year. Walk in step with it.'],
+  resource:   ["{pet}'s {el} feeds the {year} year, so whatever you nurture now grows fast.",
+               'You are fuel for the {year} year. Give generously and it comes back doubled.'],
+  expression: ['The {year} year pours its {yel} into you, so accept the support.',
+               'This {year} year is on your side, quietly refilling your cup.'],
+  wealth:     ['The {year} year is clay in your hands. Shape it boldly.',
+               'You hold the reins of this {year} year. Steer toward what you love.'],
+  authority:  ['The {year} year sets the rules, so bend like bamboo and you win.',
+               'The {year} year is a strict teacher, and you are its favourite student.'],
+};
+const LUCK_SCORE = { resource: 2, companion: 1, expression: 1, wealth: 0, authority: -1 };
+
+function makeOracle(pet) {
+  const cal = baziCalendar(), p = (pet.id * 13 + cal.dayIdx) % 60;          // the pet's pillar shifts daily
+  const stem = STEMS[p % 10], branch = BRANCHES[p % 12], el = ELEMENTS[stem[2]];
+  const dayRel = relation(stem[2], STEMS[cal.day.stem][2]);
+  const yearRel = relation(stem[2], STEMS[cal.year.stem][2]);
+  const score = LUCK_SCORE[dayRel] * 2 + LUCK_SCORE[yearRel];
+  const luck = score >= 5 ? '大吉' : score >= 3 ? '中吉' : score >= 1 ? '吉' : score >= 0 ? '小吉' : '末吉';
+  const god = TEN_GODS[dayRel];
+  const world = WORLDS[pet.worldIndex ?? current().worldIndex];
+  return {
+    pet, stem, branch, el, god, luck, cal,
+    reading: composeReading(pet, el, god, cal, yearRel),
+    item: world.lucky[(pet.id + cal.dayIdx) % world.lucky.length],
+  };
+}
+
+function yearName(cal) {                   // e.g. "丙午 FIRE HORSE"
+  return `${cal.year.text} ${ELEMENTS[STEMS[cal.year.stem][2]].en} ${BRANCHES[cal.year.branch][1]}`;
+}
+
+function openOracle(pet) {
+  Persona.noteCard();
+  oracle = { card: makeOracle(pet), start: millis() };
+  Sound.chime();
+}
+
+function drawOracle(F) {
+  const c = oracle.card, el = c.el, a = Math.min(1, (millis() - oracle.start) / 450);
+  const flip = Math.sin(a * Math.PI / 2);                     // card flips open
+  const H = Math.min(height * 0.9, width * 0.94 / 0.62), W = H * 0.62;
+  const ink = '#2a0018', gold = '#c9a227', paper = mix(el.color, '#ffffff', 0.62);
+  const txt = (s, x, y, size, color, align = 'center') => {
+    ctx.font = `${Math.round(size)}px ${FONT}`; ctx.textAlign = align; ctx.fillStyle = color; ctx.fillText(s, x, y);
+  };
+
+  ctx.fillStyle = `rgba(0,0,0,${0.5 * a})`;
+  ctx.fillRect(0, 0, width, height);
+  ctx.save();
+  ctx.translate(width / 2, height / 2);
+  ctx.scale(Math.max(0.02, flip), 1);
+  ctx.translate(-W / 2, -H / 2);
+  ctx.textBaseline = 'middle';
+
+  // paper, tiled element watermark, double frame
+  ctx.fillStyle = el.deep; ctx.fillRect(H * 0.015, H * 0.015, W, H);
+  ctx.fillStyle = paper; ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = 0.1;
+  const tile = H * 0.06;
+  for (let y = tile; y < H; y += tile) for (let x = tile / 2; x < W; x += tile) txt(el.jp, x, y, tile * 0.7, el.deep);
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = 3; ctx.strokeStyle = ink; ctx.strokeRect(1.5, 1.5, W - 3, H - 3);
+  ctx.lineWidth = 1; ctx.strokeStyle = gold;
+  ctx.strokeRect(H * 0.02, H * 0.02, W - H * 0.04, H - H * 0.04);
+  ctx.strokeRect(H * 0.028, H * 0.028, W - H * 0.056, H - H * 0.056);
+  [0, 1, 2, 3].forEach(q => txt('✦', q & 1 ? W - H * 0.045 : H * 0.045, q & 2 ? H - H * 0.045 : H * 0.045, H * 0.03, gold));
+
+  // header + the pet who delivered it
+  txt('八字神諭 ✦ BAZI ORACLE', W / 2, H * 0.05, H * 0.024, ink);
+  txt(`${c.pet.jp} · ${c.pet.en}`, W / 2, H * 0.088, H * 0.027, el.deep);
+  const sp = SPRITES[c.pet.sprite], px = Math.max(2, Math.floor(H * 0.0075));
+  const sx = Math.round(W / 2 - sp.w * px / 2), sy = Math.round(H * 0.168 - sp.h * px / 2 + (Math.floor(F.t * 2.2) & 1) * px);
+  const spriteInk = { 1: mix(el.color, el.deep, 0.3), 2: mix(el.deep, '#e0218a', 0.35), 3: ink, 4: '#ffffff',
+                      b: (c.pet.colors && c.pet.colors.pet.b) || '#ff6fae' };
+  sp.rows.forEach((row, r) => Array.from(row).forEach((ch, q) => {
+    if (ch !== '.') { ctx.fillStyle = spriteInk[ch]; ctx.fillRect(sx + q * px, sy + r * px, px, px); }
+  }));
+
+  // the pillar: heavenly stem over earthly branch, beside a hanko-style stamp
+  const pillarX = W * 0.4;
+  ctx.fillStyle = mix(paper, el.color, 0.5);
+  ctx.fillRect(pillarX - H * 0.065, H * 0.245, H * 0.13, H * 0.18);
+  ctx.strokeStyle = ink; ctx.lineWidth = 2;
+  ctx.strokeRect(pillarX - H * 0.065, H * 0.245, H * 0.13, H * 0.18);
+  [[c.stem[0], 0.29], [c.branch[0], 0.38]].forEach(([ch, fy]) => {
+    txt(ch, pillarX + H * 0.004, H * fy + H * 0.004, H * 0.075, el.color);
+    txt(ch, pillarX, H * fy, H * 0.075, ink);
+  });
+  const stampX = W * 0.76, stampY = H * 0.335, stampR = H * 0.06;
+  ctx.beginPath(); ctx.arc(stampX, stampY, stampR, 0, FULL_TURN);
+  ctx.fillStyle = 'rgba(224,33,138,0.12)'; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = '#e0218a'; ctx.stroke();
+  txt(c.luck, stampX, stampY, H * (c.luck.length > 1 ? 0.038 : 0.05), '#e0218a');
+
+  // reading: pet pillar, ten god, the Four Pillars of this moment, what the portal senses, the message
+  const cal = c.cal;
+  txt(`${c.stem[1]} · ${c.branch[1]}  ${el.jp}${c.branch[2]}`, W / 2, H * 0.455, H * 0.022, el.deep);
+  txt(`${c.god.jp}  ${c.god.en}`, W / 2, H * 0.49, H * 0.03, ink);
+  txt(`此刻 年${cal.year.text} · 月${cal.month.text} · 日${cal.day.text} · 時${cal.hour.text}`, W / 2, H * 0.527, H * 0.02, el.deep);
+  const vibe = wrapLines(`✧ I SEE: ${c.reading.traits.map(tr => tr.label).join(' · ')}`, W * 0.86, H * 0.018)[0];
+  txt(vibe, W / 2, H * 0.556, H * 0.018, '#e0218a');
+
+  let size = H * 0.024, lines;
+  for (; size > H * 0.015; size -= H * 0.001) {                 // shrink to fit the message box
+    lines = wrapLines(c.reading.text, W * 0.84, size);
+    if (lines.length * size * 1.38 <= H * 0.25) break;
+  }
+  const top = H * 0.585 + size * 0.5;
+  lines.forEach((line, q) => txt(line, W / 2, top + q * size * 1.38, size, ink));
+
+  // lucky charms
+  [['COLOR', el.lucky], ['DIRECTION', el.dir], ['NUMBERS', el.nums], ['ITEM', c.item.toUpperCase()]].forEach(([k, v], q) => {
+    const y = H * (0.855 + q * 0.024);
+    txt(k, W * 0.12, y, H * 0.018, el.deep, 'left');
+    txt(v, W * 0.88, y, H * 0.018, ink, 'right');
+  });
+  ctx.fillStyle = el.color; ctx.fillRect(W * 0.12 + H * 0.072, H * 0.855 - H * 0.008, H * 0.016, H * 0.016);
+
+  txt(`DAY ${cal.doy}/${cal.yearDays} · ${cal.gregorianYear} · ${cal.term[2]} ✦ TAP TO CLOSE`, W / 2, H * 0.962, H * 0.019, el.deep);
+  ctx.restore();
+}
+
+function wrapLines(text, maxW, size) {
+  ctx.font = `${Math.round(size)}px ${FONT}`;
+  const lines = [''];
+  text.split(' ').forEach(word => {
+    const last = lines[lines.length - 1], tryLine = last ? `${last} ${word}` : word;
+    if (ctx.measureText(tryLine).width > maxW && last) lines.push(word);
+    else lines[lines.length - 1] = tryLine;
+  });
+  return lines;
+}
+
+
+/* ---------- 7e. MESSAGE WALL (留言板) ---------------------------------- */
+// Visitors leave short kind messages that scroll behind the pets. Shared through
+// Supabase when configured (see GUESTBOOK above), otherwise kept on this device.
+
+const STARTER_MESSAGES = [
+  'welcome to the portal ♡', 'my pet said 大吉 today!!', 'hi from the void (｡･ω･｡)',
+  'water energy only ✦', 'shake it like a snow globe ☆彡', 'you look cute today ♥',
+];
+
+// Roots blocked anywhere (spaces and symbols removed first), and words blocked when standalone.
+const BAD_ROOTS = [
+  'fuck', 'shit', 'cunt', 'nigg', 'niga', 'bitch', 'whore', 'slut', 'fagg', 'retard', 'pussy', 'dildo', 'porn',
+  'wank', 'motherf', 'bollock', 'twat', 'cabron', 'pendej', 'puta', 'verga', 'chinga', 'mierda', 'culero',
+  'maricon', 'joder', 'gilipoll', 'putain', 'merde', 'salope', 'connard', 'caralho', 'porra', 'scheiss',
+  'arschloch', '傻逼', '煞笔', '操你', '他妈', '妈的', '草泥马', '婊子', '贱人', '去死', '死ね', '殺す',
+  'ころす', 'くそ', 'クソ', 'ちんこ', 'まんこ', 'きもい', 'うざい', '씨발', '병신',
+];
+const BAD_WORDS = [
+  'ass', 'arse', 'dick', 'cock', 'rape', 'fag', 'nazi', 'hitler', 'kys', 'cum', 'tits', 'boobs', 'sex', 'kill',
+  'nsfw', 'idiot', 'stupid', 'dumb', 'ugly', 'loser', 'perra', 'zorra', 'idiota', 'estupido', 'estupida',
+  'pene', 'polla', 'cono', 'tonto', 'tonta', 'baka', 'バカ', 'ばか',
+];
+const LEET = { 0: 'o', 1: 'i', '!': 'i', '|': 'i', 3: 'e', 4: 'a', '@': 'a', 5: 's', $: 's', 7: 't', '+': 't', 8: 'b' };
+
+function checkMessage(raw) {
+  const text = String(raw).replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim();
+  if (text.length < 2) return { ok: false, reason: 'write a little more ♡' };
+  if (text.length > GUESTBOOK.maxLen) return { ok: false, reason: `max ${GUESTBOOK.maxLen} characters ✦` };
+  if (/https?:|www\.|\.(com|net|org|io|ly|xyz|gg|me)\b|@\w+\./i.test(text) || /\d[\d\s\-().]{6,}\d/.test(text)) {
+    return { ok: false, reason: 'no links, emails or numbers please ☆' };
+  }
+  const plain = text.normalize('NFKD').replace(/[̀-ͯ]/g, '').normalize('NFC').toLowerCase()
+    .replace(/[01!|3@4$57+8]/g, ch => LEET[ch] || ch);
+  const squashed = plain.replace(/[^\p{L}]/gu, '');
+  const collapsed = squashed.replace(/(.)\1+/g, '$1');
+  const tokens = plain.split(/[^\p{L}]+/u).filter(Boolean);
+  const hitRoot = BAD_ROOTS.some(r => squashed.includes(r) || (r === r.replace(/(.)\1+/g, '$1') && collapsed.includes(r)));
+  const hitWord = tokens.some(tk => BAD_WORDS.includes(tk) || BAD_WORDS.includes(tk.replace(/(.)\1+/g, '$1')));
+  if (hitRoot || hitWord) return { ok: false, reason: '(｡•́︿•̀｡) the portal only accepts kind words' };
+  return { ok: true, text };
+}
+
+// Messages are { id, text, pinned, at }. Pinned ones stay forever; the rest fade
+// away after GUESTBOOK.expireHours. "mine" = messages posted from this device.
+const Wall = {
+  list: STARTER_MESSAGES.map(text => ({ text, pinned: false, at: Date.now() })),
+  shared: Boolean(GUESTBOOK.url && GUESTBOOK.anonKey),
+  lastPost: 0,
+
+  headers() {
+    return { apikey: GUESTBOOK.anonKey, Authorization: `Bearer ${GUESTBOOK.anonKey}`, 'Content-Type': 'application/json' };
+  },
+  alive(m) { return m.pinned || Date.now() - m.at < GUESTBOOK.expireHours * 3600e3; },
+  mine() {                                   // this device's posts (older versions saved plain strings)
+    const list = readLocal('relic.wall', []).map(m => typeof m === 'string' ? { text: m, pinned: false, at: Date.now() } : m);
+    return list.filter(m => m && typeof m.text === 'string' && this.alive(m));
+  },
+  saveMine(list) { writeLocal('relic.wall', list.slice(0, GUESTBOOK.keep)); },
+
+  async load() {
+    let msgs = this.mine();
+    if (this.shared) {
+      try {
+        const since = new Date(Date.now() - GUESTBOOK.expireHours * 3600e3).toISOString();
+        const r = await fetch(`${GUESTBOOK.url}/rest/v1/${GUESTBOOK.table}?select=id,text,pinned,created_at` +
+                              `&or=(pinned.is.true,created_at.gt.${since})&order=created_at.desc&limit=${GUESTBOOK.keep}`,
+                              { headers: this.headers() });
+        if (r.ok) msgs = (await r.json()).map(m => ({ id: m.id, text: m.text, pinned: m.pinned, at: Date.parse(m.created_at) }));
+      } catch (e) { /* offline: keep what we have */ }
+    }
+    msgs = msgs.filter(m => this.alive(m) && checkMessage(m.text).ok);   // re-check everything we display
+    this.list = msgs.length ? msgs : STARTER_MESSAGES.map(text => ({ text, pinned: false, at: Date.now() }));
+  },
+
+  async post(text, pinned) {
+    const msg = { text, pinned, at: Date.now() };
+    if (this.shared) {
+      const r = await fetch(`${GUESTBOOK.url}/rest/v1/${GUESTBOOK.table}`, {
+        method: 'POST', headers: { ...this.headers(), Prefer: 'return=representation' }, body: JSON.stringify({ text, pinned }),
+      });
+      if (!r.ok) throw new Error(`post failed: ${r.status}`);
+      msg.id = (await r.json())[0]?.id;
+    }
+    this.saveMine([msg, ...this.mine()]);
+    await this.load();
+  },
+
+  async setPinned(at, pinned) {              // pin / unpin one of my messages
+    const mine = this.mine(), m = mine.find(x => x.at === at);
+    if (!m) return;
+    if (this.shared && m.id != null) {
+      const r = await fetch(`${GUESTBOOK.url}/rest/v1/${GUESTBOOK.table}?id=eq.${m.id}`, {
+        method: 'PATCH', headers: { ...this.headers(), Prefer: 'return=minimal' }, body: JSON.stringify({ pinned }),
+      });
+      if (!r.ok) throw new Error(`pin failed: ${r.status}`);
+    }
+    m.pinned = pinned;
+    if (!pinned) m.at = Date.now();          // unpinning starts a fresh countdown
+    this.saveMine(mine);
+    await this.load();
+  },
+};
+
+function timeLeft(m) {
+  if (m.pinned) return '📌 pinned forever';
+  const h = (GUESTBOOK.expireHours * 3600e3 - (Date.now() - m.at)) / 3600e3;
+  return h >= 1 ? `⏳ ${Math.floor(h)}h left` : `⏳ ${Math.max(1, Math.round(h * 60))}m left`;
+}
+
+function renderMyMessages() {
+  const box = document.getElementById('wall-mine'), mine = Wall.mine();
+  box.innerHTML = mine.length ? '' : '<div class="note">nothing yet, write the first one ♡</div>';
+  mine.forEach(m => {
+    const row = document.createElement('div');
+    row.className = 'mine-row';
+    const txt = document.createElement('span'); txt.textContent = m.text;
+    const left = document.createElement('span'); left.className = 'left'; left.textContent = timeLeft(m);
+    const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = m.pinned ? 'UNPIN' : '📌 PIN';
+    btn.onclick = async () => {
+      try { await Wall.setPinned(m.at, !m.pinned); renderMyMessages(); Sound.blip(); }
+      catch (e) { document.getElementById('wall-status').textContent = 'could not reach the wall, try again?'; }
+    };
+    row.append(txt, left, btn);
+    box.appendChild(row);
+  });
+}
+
+function setupWall() {
+  const form = document.querySelector('#wall form'), input = document.getElementById('wall-input');
+  const status = document.getElementById('wall-status'), pin = document.getElementById('wall-pin');
+  document.getElementById('wall-pin-label').lastChild.textContent =
+    ` PIN IT: stays forever (otherwise it disappears after ${GUESTBOOK.expireHours}h)`;
+  document.getElementById('wall-note').textContent = Wall.shared
+    ? 'everyone who visits will see your messages ✦'
+    : 'local mode: only this device sees these. to show messages to everyone, add them to PINNED_MESSAGES in the file or connect the free database';
+  document.getElementById('wall-close').addEventListener('click', closeWall);
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const res = checkMessage(input.value);
+    if (!res.ok) { status.textContent = res.reason; return; }
+    if (Date.now() - Wall.lastPost < GUESTBOOK.cooldownMs) { status.textContent = 'the wall needs a tiny nap, try again soon ♡'; return; }
+    status.textContent = 'sending ♡…';
+    try {
+      await Wall.post(res.text, pin.checked);
+      Wall.lastPost = Date.now();
+      input.value = '';
+      pin.checked = false;
+      status.textContent = Wall.shared ? 'posted! everyone can see it now ✦' : 'on the wall ✦';
+      renderMyMessages();
+      Sound.chime();
+    } catch (err) {
+      status.textContent = 'the void ate it (network error), try again?';
+    }
+  });
+  Wall.load();
+  setInterval(() => Wall.load(), Wall.shared ? GUESTBOOK.pollMs : 60000);   // also sweeps away expired ones
+}
+
+function openWall() {
+  document.getElementById('wall').hidden = false;
+  document.getElementById('wall-status').textContent = '';
+  renderMyMessages();
+  document.getElementById('wall-input').focus();
+}
+function closeWall() { document.getElementById('wall').hidden = true; }
+const wallOpen = () => !document.getElementById('wall').hidden;
+
+function drawWall(F) {                      // ticker lanes drifting behind the pets
+  const list = [...PINNED_MESSAGES.map(m => `★ ${m}`), ...Wall.list.map(m => `${m.pinned ? '★' : '✉'} ${m.text}`)], P = F.d.pal;
+  if (!list.length) return;
+  const size = Math.max(13, Math.round(cell * 1.3));
+  const lanes = Math.max(1, Math.min(4, list.length, Math.floor(height / (size * 5))));
+  ctx.font = `${size}px ${FONT}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(3, size * 0.28);
+  for (let l = 0; l < lanes; l++) {
+    const msgs = list.filter((_, q) => q % lanes === l);
+    const text = msgs.join('    ✦    ') + '    ✦    ';
+    const w = ctx.measureText(text).width, dir = l & 1 ? 1 : -1, speed = size * (1.4 + (l % 3) * 0.6);
+    const y = height * (0.2 + 0.6 * (l + 0.5) / lanes);
+    for (let x = ((F.t * speed * dir) % w + w) % w - w; x < width; x += w) {
+      ctx.strokeStyle = P[0]; ctx.strokeText(text, x, y);
+      ctx.fillStyle = P[1 + (l % (F.d.n - 1))]; ctx.fillText(text, x, y);
+    }
+  }
+}
+
+
+/* ---------- 7f. MINI-GAME: FORTUNE CARDS (占) ------------------------- */
+// Three face-down cards shuffle; pick one and the pet hiding on it reads your fortune.
+
+let fortune = null;
+
+function openFortune() {
+  oracle = null;
+  const pool = shuffle(PETS.slice()).slice(0, 3);
+  if (customPets.length && Math.random() < 0.5) pool[Math.floor(Math.random() * 3)] = random(customPets);   // one of yours may be hiding here
+  const swaps = Array.from({ length: 6 }, () => shuffle([0, 1, 2]).slice(0, 2));
+  fortune = { start: millis(), pets: pool, swaps, slots: [0, 1, 2] };
+  Sound.chime();
+}
+
+function fortuneLayout() {
+  const ch = Math.min(height * 0.42, (width * 0.9 / 3.4) / 0.62), cw = ch * 0.62;
+  return { cw, ch, gap: cw * 1.2, y: height * 0.5 };
+}
+
+// Card k's slot (possibly between two slots) at time `el` seconds into the shuffle.
+function fortuneSlot(k, el) {
+  const swapDur = 0.28, n = Math.min(fortune.swaps.length, Math.floor(el / swapDur));
+  const slots = [0, 1, 2];
+  for (let s = 0; s < n; s++) { const [a, b] = fortune.swaps[s]; [slots[a], slots[b]] = [slots[b], slots[a]]; }
+  if (n >= fortune.swaps.length) return { x: slots[k], lift: 0, done: true, slots };
+  const [a, b] = fortune.swaps[n], p = (el - n * swapDur) / swapDur, e = p * p * (3 - 2 * p);
+  const next = slots.slice(); [next[a], next[b]] = [next[b], next[a]];
+  const moving = k === a || k === b;
+  return { x: slots[k] + (next[k] - slots[k]) * e, lift: moving ? Math.sin(e * Math.PI) * (k === a ? 1 : -1) : 0, done: false, slots };
+}
+
+function drawFortune(F) {
+  const { cw, ch, gap, y } = fortuneLayout(), el = (millis() - fortune.start) / 1000;
+  ctx.fillStyle = 'rgba(10,0,20,0.6)';
+  ctx.fillRect(0, 0, width, height);
+  let done = false;
+  fortune.pets.forEach((pet, k) => {
+    const s = fortuneSlot(k, el);
+    done = s.done;
+    const cx = width / 2 + (s.x - 1) * gap, cy = y - s.lift * ch * 0.25 + (s.done ? Math.sin(F.t * 3 + k) * ch * 0.02 : 0);
+    fortune.slots = s.slots;
+    drawCardBack(cx - cw / 2, cy - ch / 2, cw, ch, F.t + k);
+  });
+  const size = Math.max(14, Math.round(cell * 1.4));
+  ctx.textBaseline = 'top';
+  label(done ? 'PICK YOUR CARD ✦ 選んでね' : 'SHUFFLING DESTINY… 洗牌中', width / 2, y + ch * 0.62, size, 'center', F.d.pal);
+  label('八字 FORTUNE GAME', width / 2, y - ch * 0.62 - size * 3, size, 'center', F.d.pal);
+  const cal = baziCalendar();                // the moment you're drawing in
+  label(`${cal.gregorianYear} ${yearName(cal)} · DAY ${cal.doy} · ${cal.term[2]} ${cal.term[3]}`,
+        width / 2, y - ch * 0.62 - size * 1.5, Math.round(size * 0.75), 'center', F.d.pal);
+  fortune.ready = done;
+}
+
+function drawCardBack(x, y, w, h, t) {
+  const gold = '#c9a227';
+  ctx.fillStyle = '#ff4fd8'; ctx.fillRect(x + w * 0.05, y + w * 0.05, w, h);
+  ctx.fillStyle = '#2a0018'; ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = gold; ctx.lineWidth = 2;
+  ctx.strokeRect(x + w * 0.06, y + w * 0.06, w - w * 0.12, h - w * 0.12);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const ring = ELEMENTS.map(e => e.jp);
+  ring.forEach((c, q) => {
+    const a = t * 0.8 + q / ring.length * FULL_TURN;
+    ctx.font = `${Math.round(w * 0.14)}px ${FONT}`;
+    ctx.fillStyle = ELEMENTS[q].color;
+    ctx.fillText(c, x + w / 2 + Math.cos(a) * w * 0.3, y + h / 2 + Math.sin(a) * w * 0.3);
+  });
+  ctx.font = `${Math.round(w * 0.2)}px ${FONT}`; ctx.fillStyle = gold;
+  ctx.fillText('八字', x + w / 2, y + h / 2);
+  ctx.font = `${Math.round(w * 0.1)}px ${FONT}`;
+  ctx.fillText('✦', x + w * 0.16, y + w * 0.16); ctx.fillText('✦', x + w * 0.84, y + h - w * 0.16);
+}
+
+function fortuneTap(x, y) {                // returns true if the tap was used by the game
+  if (!fortune.ready) return true;
+  const { cw, ch, gap, y: cy } = fortuneLayout();
+  const k = fortune.pets.findIndex((_, q) => {
+    const cx = width / 2 + (fortune.slots[q] - 1) * gap;
+    return Math.abs(x - cx) < cw / 2 && Math.abs(y - cy) < ch / 2;
+  });
+  const pet = k >= 0 ? fortune.pets[k] : null;
+  fortune = null;
+  if (pet) openOracle(pet);
+  return true;
+}
+
+
+/* ---------- 7g. MINI-GAME: DRESS-UP STUDIO (着せ替え) ----------------- */
+// Your own pet collection: start with one, create up to MAX_MY_PETS, edit or delete any.
+// Up to two of them walk beside the star pet in every scene.
+
+const STUDIO_COLORS = [
+  ['BUBBLEGUM', '#ff9ad5'], ['LILAC', '#c9a7ff'], ['MINT', '#9ff0c8'], ['LEMON', '#fff38a'],
+  ['SKY', '#9fd8ff'], ['PEACH', '#ffc29f'], ['CHROME', '#e4e4f2'], ['NEON', '#39ff14'],
+];
+const STUDIO_PARTS = [
+  ['BODY',  Object.keys(BODIES)],
+  ['EYES',  Object.keys(EYE_PAIRS)],
+  ['MOUTH', Object.keys(MOUTHS)],
+  ['HAT',   ['-', ...Object.keys(HATS)]],
+  ['COLOR', STUDIO_COLORS.map(c => c[0])],
+  ['BLUSH', ['pink', 'off', 'purple', 'red', 'orange']],   // index 0/1 match older on/off saves
+];
+const BLUSH_COLORS = { pink: '#ff6fae', purple: '#b36bff', red: '#ff3b4e', orange: '#ff9a3c' };
+const MAX_MY_PETS = 8;
+let myPets = [];                           // saved: [{ uid, name, pick }]
+let customPets = [];                       // live pet objects built from myPets
+const studio = { pick: [0, 0, 0, 0, 0, 0], sel: 0 };
+
+function petColors(hex, blush = BLUSH_COLORS.pink) {   // sticker palette for a custom pet
+  const ink = '#2a0018', accent = mix(hex, ink, 0.35);
+  return {
+    pet:    { 1: hex, 2: accent, 3: ink, 4: '#ffffff', 5: '#ffffff', 6: '#1a0010', 7: ink, 8: blush, b: blush },
+    petInk: { 1: mix(hex, ink, 0.25), 2: mix(accent, ink, 0.35), 3: '#5a3050', 4: mix('#ffffff', accent, 0.35),
+              5: mix('#ffffff', accent, 0.45), 6: '#3a2030', 8: mix(blush, '#ffffff', 0.55) },
+  };
+}
+
+// part choices → composePet spec + body colour (indices wrap, so old saves stay valid)
+function specFromPick(pick) {
+  const v = STUDIO_PARTS.map(([, opts], q) => opts[(pick[q] || 0) % opts.length]);
+  return { spec: `${v[0]} ${v[1]} ${v[2]} ${v[3]}${v[5] !== 'off' ? ' blush' : ''}`,
+           color: STUDIO_COLORS[(pick[4] || 0) % STUDIO_COLORS.length][1],
+           blush: BLUSH_COLORS[v[5]] || BLUSH_COLORS.pink };
+}
+const randomPick = () => STUDIO_PARTS.map(([, list]) => Math.floor(Math.random() * list.length));
+
+function rebuildMyPets() {
+  customPets = myPets.map((s, q) => {
+    const { spec, color, blush } = specFromPick(s.pick), sprite = `custom${s.uid}`;
+    registerSprite(sprite, composePet(spec));
+    return { id: 900 + q, uid: s.uid, en: s.name.toUpperCase(), jp: 'わたしのペット', sprite, colors: petColors(color, blush) };
+  });
+  writeLocal('relic.pets', myPets);
+}
+
+function loadMyPets() {
+  myPets = readLocal('relic.pets', []).filter(s => s && s.uid && Array.isArray(s.pick) && s.name);
+  const legacy = readLocal('relic.custom', null);               // single pet from an older version
+  if (!myPets.length && legacy && legacy.pick) myPets = [{ uid: 1, name: legacy.name || 'MOCHI', pick: legacy.pick }];
+  if (!myPets.length) myPets = [{ uid: Date.now(), name: 'MOCHI', pick: randomPick() }];   // everyone starts with one
+  rebuildMyPets();
+}
+
+function drawPetTo(canvas, pick, bg = '#ffd1ec') {
+  const { spec, color, blush } = specFromPick(pick), rows = composePet(spec), colors = petColors(color, blush).pet;
+  const g = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
+  const px = Math.max(1, Math.floor(Math.min(W / 14, H / (rows.length + 2))));
+  const ox = Math.round((W - 12 * px) / 2), oy = Math.round((H - rows.length * px) / 2);
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  if (W > 60) {                              // checkerboard for the big preview
+    g.fillStyle = '#ffe6f4';
+    for (let y = 0; y < H; y += px * 2) for (let x = (y / px / 2) % 2 ? px * 2 : 0; x < W; x += px * 4) g.fillRect(x, y, px * 2, px * 2);
+  }
+  rows.forEach((row, r) => Array.from(row).forEach((ch, q) => {
+    if (ch !== '.') { g.fillStyle = colors[ch]; g.fillRect(ox + q * px, oy + r * px, px, px); }
+  }));
+}
+
+function selectMyPet(q) {
+  studio.sel = Math.max(0, Math.min(myPets.length - 1, q));
+  studio.pick = myPets[studio.sel].pick.slice();
+  document.getElementById('studio-name').value = myPets[studio.sel].name;
+  document.getElementById('studio-status').textContent = '';
+  renderStudio();
+}
+
+function setupStudio() {
+  const opts = document.getElementById('studio-opts'), form = document.querySelector('#studio form');
+  const status = document.getElementById('studio-status'), name = document.getElementById('studio-name');
+  STUDIO_PARTS.forEach(([title, list], q) => {
+    const row = document.createElement('div');
+    row.className = 'opt';
+    row.innerHTML = `<span>${title}</span><button type="button">◀</button><span class="val"></span><button type="button">▶</button>`;
+    const [prev, next] = row.querySelectorAll('button');
+    prev.onclick = () => { studio.pick[q] = (studio.pick[q] + list.length - 1) % list.length; renderStudio(); };
+    next.onclick = () => { studio.pick[q] = (studio.pick[q] + 1) % list.length; renderStudio(); };
+    opts.appendChild(row);
+  });
+
+  document.getElementById('studio-random').onclick = () => { studio.pick = randomPick(); renderStudio(); };
+  document.getElementById('studio-close').onclick = closeStudio;
+  document.getElementById('studio-new').onclick = () => {
+    if (myPets.length >= MAX_MY_PETS) { status.textContent = `your nest is full (max ${MAX_MY_PETS} pets) ♡`; return; }
+    myPets.push({ uid: Date.now(), name: `PET ${myPets.length + 1}`, pick: randomPick() });
+    rebuildMyPets();
+    selectMyPet(myPets.length - 1);
+    status.textContent = 'a new egg hatched! dress it up ✦';
+    Sound.chime();
+  };
+  document.getElementById('studio-delete').onclick = () => {
+    if (myPets.length <= 1) { status.textContent = 'you need at least one pet ♡'; return; }
+    const gone = myPets.splice(studio.sel, 1)[0];
+    rebuildMyPets();
+    selectMyPet(studio.sel);
+    status.textContent = `${gone.name} went on a long vacation ✈`;
+  };
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const check = checkMessage(name.value || 'mochi');
+    if (!check.ok || check.text.length > 14) { status.textContent = check.ok ? 'max 14 characters ✦' : check.reason; return; }
+    myPets[studio.sel] = { ...myPets[studio.sel], name: check.text, pick: studio.pick.slice() };
+    rebuildMyPets();
+    renderStudio();
+    status.textContent = `${check.text} saved ♥`;
+    Sound.chime();
+  });
+  loadMyPets();
+}
+
+function renderStudio() {
+  const chips = document.getElementById('studio-pets');     // your collection
+  chips.innerHTML = '';
+  myPets.forEach((s, q) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `chip${q === studio.sel ? ' sel' : ''}`;
+    const cv = document.createElement('canvas');
+    cv.width = 28; cv.height = 28;
+    drawPetTo(cv, q === studio.sel ? studio.pick : s.pick, '#ffffff');
+    b.append(cv, document.createTextNode(s.name));
+    b.onclick = () => selectMyPet(q);
+    chips.appendChild(b);
+  });
+  document.querySelectorAll('#studio-opts .val').forEach((el, q) => {
+    const list = STUDIO_PARTS[q][1];
+    el.textContent = list[studio.pick[q] % list.length].toUpperCase().replace('-', 'NONE');
+  });
+  drawPetTo(document.getElementById('studio-preview'), studio.pick);
+}
+
+function openStudio() { document.getElementById('studio').hidden = false; selectMyPet(studio.sel); }
+function closeStudio() { document.getElementById('studio').hidden = true; }
+const panelOpen = () => wallOpen() || !document.getElementById('studio').hidden;
+
+
+/* ---------- 8. POSTER HUD -------------------------------------------- */
+
+function drawHUD(F) {
+  const { sc, d, t } = F, P = d.pal;
+  const hs = Math.max(12, Math.round(cell * 1.15)), ss = Math.max(10, Math.round(hs * 0.72));
+  const m = Math.max(14, Math.round(cell * 1.2));
+  ctx.textBaseline = 'top';
+
+  // chic double hairline frame
+  ctx.lineWidth = 1; ctx.strokeStyle = P[1];
+  for (const [inset, alpha] of [[0.4, 1], [0.6, 0.45]]) {
+    const o = Math.round(m * inset);
+    ctx.globalAlpha = alpha;
+    ctx.strokeRect(o + 0.5, o + 0.5, width - 2 * o - 1, height - 2 * o - 1);
+  }
+  ctx.globalAlpha = 1;
+
+  titleBlock(P, d, t, m, hs, ss, F.virus ? (frameCount & 4 ? '萌ウイルス' : '感染中♡♡') : TITLE_JP);
+  label(`№ ${String(sc.id + 1).padStart(3, '0')} / ${SCENES.length}`, width - m, m, hs, 'right', P);
+  label(`${sc.world.jp} · ${sc.world.en}`, width - m, m + hs * 1.6, ss, 'right', P);
+  drawMenu(F, m, m + hs * 1.6 + ss * 2.4);
+
+  const style = `${sc.style.toUpperCase()} MODE · ${sc.bpm} BPM`, bottom = height - m - ss;
+  if (width < height) {                    // portrait phone: centred stack
+    const cxp = width / 2;
+    label(hintText(), cxp, bottom, ss, 'center', P);
+    label(style, cxp, bottom - ss * 1.8, ss, 'center', P);
+    label(sc.name, cxp, bottom - ss * 3.6, ss, 'center', P);
+    label(sc.cjk, cxp, bottom - ss * 3.6 - hs * 1.7, hs, 'center', P);
+  } else {
+    label(sc.name, m, bottom, ss, 'left', P);
+    label(sc.cjk, m, bottom - hs * 1.7, hs, 'left', P);
+    label(hintText(), width - m, bottom, ss, 'right', P);
+    label(style, width - m, bottom - ss * 1.8, ss, 'right', P);
+  }
+}
+
+// Mini-game menu: chunky sticker buttons that bob, and take turns sparkling.
+function drawMenu(F, m, top) {
+  const t = F.t, ink = VIRUS.ink, size = Math.max(14, Math.round(cell * 1.35));
+  const items = [
+    ['占', 'FORTUNE GAME', '#fff200', openFortune],
+    ['✉', 'MESSAGE WALL', '#7dfcff', openWall],
+    ['✂', 'DRESS-UP PET', '#ff9ad5', openStudio],
+    ['♪', Sound.started && Sound.on ? 'SOUND ON' : 'SOUND OFF', '#b8ff5c', () => (Sound.started ? Sound.toggle() : Sound.start())],
+  ];
+  ctx.font = `${size}px ${FONT}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  const h = Math.round(size * 2), iconW = h, gap = Math.round(size * 0.55);
+  const w = Math.max(...items.map(it => ctx.measureText(it[1]).width)) + iconW + size * 1.2;
+  const x = width - m - w, shadow = Math.max(3, Math.round(size * 0.25));
+  const spotlight = Math.floor(t / 1.6) % 3;             // the three games take turns sparkling
+
+  label('MINI GAMES ✦ 遊戯', width - m, top, Math.max(10, Math.round(size * 0.7)), 'right', F.d.pal);
+  menu = items.map(([icon, text, color, action], q) => {
+    const y = Math.round(top + size * 1.5 + q * (h + gap) + Math.sin(t * 2.5 + q * 1.3) * size * 0.1);
+    ctx.fillStyle = ink; ctx.fillRect(x + shadow, y + shadow, w, h);                  // drop shadow
+    ctx.fillStyle = color; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = ink; ctx.fillRect(x, y, iconW, h);                                // icon tile
+    ctx.lineWidth = 2; ctx.strokeStyle = ink; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+    if (q === spotlight) {                                                            // sparkle outline
+      ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff';
+      ctx.strokeRect(x - 3, y - 3, w + 6, h + 6);
+      ctx.font = `${Math.round(size * 0.8)}px ${FONT}`; ctx.fillStyle = '#ffffff';
+      ctx.fillText('✦', x - size * 0.9, y + h / 2 + Math.sin(t * 8) * size * 0.15);
+    }
+    ctx.font = `${Math.round(size * 1.1)}px ${FONT}`; ctx.textAlign = 'center';
+    ctx.fillStyle = color; ctx.fillText(icon, x + iconW / 2, y + h / 2);
+    ctx.font = `${size}px ${FONT}`; ctx.textAlign = 'left';
+    ctx.fillStyle = ink; ctx.fillText(text, x + iconW + size * 0.6, y + h / 2);
+    return { action, rect: { x, y, w, h } };
+  });
+  ctx.textBaseline = 'top';
+}
+
+function titleBlock(P, d, t, m, hs, ss, title) {  // acid strobe title, one colour per character
+  const ts = Math.round(hs * 1.7);
+  ctx.font = `${ts}px ${FONT}`; ctx.textAlign = 'left';
+  plate(m, m, ctx.measureText(title).width, ts, P[0]);
+  let x = m;
+  Array.from(title).forEach((ch, q) => {
+    ctx.fillStyle = P[2]; ctx.fillText(ch, x + ts * 0.06, m + ts * 0.06);
+    ctx.fillStyle = P[1 + (q + Math.floor(t * 4)) % (d.n - 1)]; ctx.fillText(ch, x, m);
+    x += ctx.measureText(ch).width;
+  });
+  label(TITLE_EN, m, m + ts * 1.3, ss, 'left', P);
+}
+
+function label(txt, x, y, size, align, P) {
+  ctx.font = `${size}px ${FONT}`; ctx.textAlign = align;
+  const w = ctx.measureText(txt).width;
+  const left = align === 'right' ? x - w : align === 'center' ? x - w / 2 : x;
+  plate(left, y, w, size, P[0]);
+  const o = Math.max(1, Math.round(size * 0.07));
+  ctx.fillStyle = P[2]; ctx.fillText(txt, x + o, y + o);
+  ctx.fillStyle = P[1]; ctx.fillText(txt, x, y);
+  return { x: left - size * 0.35, y: y - size * 0.2, w: w + size * 0.7, h: size * 1.4 };
+}
+
+function plate(x, y, w, size, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x - size * 0.35, y - size * 0.2, w + size * 0.7, size * 1.4);
+}
+
+function hintText() {
+  const how = IS_COARSE ? 'TAP' : 'CLICK';
+  return `${how} ANYWHERE TO WARP ✦ 占 FORTUNE GAME FOR READINGS`;
+}
+
+
+/* ---------- 9. P5 LIFECYCLE & INPUT ---------------------------------- */
+
+function setup() {
+  const cnv = createCanvas(windowWidth, windowHeight);
+  cnv.elt.addEventListener('pointerdown', onPointerDown);
+  window.addEventListener('touchend', unlock, { passive: true });
+  window.addEventListener('click', unlock);
+  window.addEventListener('keydown', unlock);
+  window.addEventListener('devicemotion', onMotion);
+  document.addEventListener('visibilitychange', () => Sound.pause(document.hidden));
+
+  pixelDensity(1);                        // chunky pixels, upscaled crisply by CSS
+  frameRate(CFG.fps);
+  ctx = drawingContext;
+  makeScanlines();
+  buildLayout();
+  Persona.load();
+  setupWall();
+  setupStudio();
+  order = buildOrder();
+  prevD = prepare(current());
+  nextVirus = millis() + random(VIRUS.minGapMs, VIRUS.maxGapMs);
+}
+
+function draw() {
+  const t = millis() / 1000, sc = current();
+  trans = Math.max(0, trans - deltaTime / CFG.transitionMs);
+  Persona.dwell[sc.worldIndex] += deltaTime / 1000;
+  const V = updateVirus(millis());
+  updatePopups(millis());
+  const d = V && V.types.has('negative') && (frameCount & 2) ? negativeD(sc) : sc.d;
+  const rot = 0.18 * Math.sin(t * 0.11);
+  const F = {
+    t, sc, d, rot, virus: V, pat: PATTERNS[sc.pattern],
+    cr: Math.cos(rot), sr: Math.sin(rot), zoom: 1 + 0.12 * Math.sin(t * 0.23),
+  };
+  lastPets = petStates(t, sc);
+  if (V) lastPets[lastPets.length - 1].i0 += Math.round(Math.sin(t * 50));   // the infected pet shivers
+  buildPetLayer(lastPets);
+
+  // per-row tears (warp glitch + tiny random ones) and per-column melt (virus)
+  const tearSeed = frameCount >> 1;
+  for (let j = 0; j < L.rows; j++) {
+    const tearing = trans > 0 && hash(j, tearSeed, 1) < trans * 0.5;
+    const micro = hash(j, frameCount >> 2, 5) < 0.006;
+    L.tear[j] = tearing ? Math.round((hash(j, tearSeed, 2) - 0.5) * trans * cell * 8)
+              : micro   ? Math.round((hash(j, frameCount, 6) - 0.5) * cell * 3) : 0;
+  }
+  const meltAmp = V && V.types.has('melt') ? Math.sin(V.p * Math.PI) * cell * 7 : 0;
+  for (let i = 0; i < L.cols; i++) L.melt[i] = meltAmp ? Math.round(hash(i, V.seed) * meltAmp) : 0;
+
+  ctx.fillStyle = d.pal[0];
+  ctx.fillRect(0, 0, width, height);
+  const cellFont = `${Math.round(cell * 0.95)}px ${FONT}`;
+  const eachCell = (wantPet, paint) => {
+    ctx.font = cellFont; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let j = 0; j < L.rows; j++) for (let i = 0; i < L.cols; i++) {
+      const k = j * L.cols + i;
+      if ((L.code[k] !== 0) === wantPet) paint(k, i, j, i * cell + L.tear[j], j * cell + L.melt[i], F);
+    }
+  };
+
+  eachCell(false, backgroundCell);        // 1. psychedelic background
+  drawWall(F);                            // 2. visitors' messages
+  eachCell(true, petCell);                // 3. the pets, on top
+  drawEmote(F, lastPets[lastPets.length - 1]);
+  drawNameTags(F);
+  drawHUD(F);
+  drawPopups(F);
+  if (fortune) drawFortune(F);
+  if (oracle) drawOracle(F);
+  ctx.fillStyle = scanlines;
+  ctx.fillRect(0, 0, width, height);
+  if (trans > 0.6) {                      // brief colour flash on warp
+    ctx.globalAlpha = (trans - 0.6) * 1.2;
+    ctx.fillStyle = d.pal[1];
+    ctx.fillRect(0, 0, width, height);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function warp(source = 'tap') {
+  const now = millis();
+  if (now - lastWarp < 300) return;
+  lastWarp = now;
+  Persona.noteWarp(source);
+  oracle = null;
+  fortune = null;
+  prevD = current().d;
+  sceneCursor = (sceneCursor + 1) % order.length;
+  prepare(current());
+  trans = 1;
+  Sound.setScene(current(), true);
+}
+
+// Round-robin across worlds so consecutive scenes feel different.
+function buildOrder() {
+  const perWorld = WORLDS.map((_, w) => shuffle(SCENES.filter(s => s.worldIndex === w).map(s => s.id)));
+  const out = [], longest = Math.max(...perWorld.map(list => list.length));
+  for (let n = 0; n < longest; n++) {
+    shuffle(WORLDS.map((_, w) => w)).forEach(w => { if (n < perWorld[w].length) out.push(perWorld[w][n]); });
+  }
+  return out;
+}
+
+function makeScanlines() {
+  const c = document.createElement('canvas');
+  c.width = 1; c.height = 3;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(0,0,0,0.22)';
+  g.fillRect(0, 2, 1, 1);
+  scanlines = ctx.createPattern(c, 'repeat');
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  buildLayout();
+}
+
+// Pointer events treat mouse clicks and finger taps the same way.
+function onPointerDown(e) {
+  e.preventDefault();
+  const x = e.clientX, y = e.clientY;
+  const item = menu.find(it => hitRect(x, y, it.rect, 8));
+  if (item) { if (item.rect !== menu[menu.length - 1].rect) unlock(); item.action(); return; }
+  unlock();
+  if (fortune) { fortuneTap(x, y); return; }          // fortune game in progress
+  if (oracle) { oracle = null; return; }              // any tap closes the card
+  if (popupTap(x, y)) return;                         // tap a pop-up to close it
+  warp(e.pointerType === 'mouse' ? 'click' : 'tap');  // tap anywhere else (pets too) → new scene
+}
+
+// iOS only grants motion + audio from touchend / click / keydown gestures.
+function unlock() { askMotion(); Sound.start(); }
+
+function hitRect(x, y, r, pad) {
+  return x > r.x - pad && x < r.x + r.w + pad && y > r.y - pad && y < r.y + r.h + pad;
+}
+
+function keyPressed() {
+  if (panelOpen()) { if (keyCode === ESCAPE) { closeWall(); closeStudio(); } return; }   // typing in a panel
+  if (keyCode === ESCAPE) { fortune = null; oracle = null; return; }
+  if (key === 'g' || key === 'G') openFortune();
+  if (key === 'w' || key === 'W') openWall();
+  if (key === 'd' || key === 'D') openStudio();
+  if (key === 'f' || key === 'F') fullscreen(!fullscreen());
+  if (key === 'm' || key === 'M') { if (!Sound.started) Sound.start(); else Sound.toggle(); }
+}
+
+function askMotion() {
+  if (!CFG.shakeToWarp || motionAsked || !NEEDS_MOTION_PERMISSION) return;
+  motionAsked = true;
+  DeviceMotionEvent.requestPermission()
+    .then(state => { motionGranted = state === 'granted'; })
+    .catch(() => { motionAsked = false; });
+}
+
+function onMotion(e) {
+  if (!CFG.shakeToWarp) return;
+  const a = e.acceleration, g = e.accelerationIncludingGravity;
+  let force = 0;
+  if (a && a.x !== null) force = Math.hypot(a.x, a.y, a.z);
+  else if (g && g.x !== null) force = Math.abs(Math.hypot(g.x, g.y, g.z) - 9.81);
+  if (force > CFG.shakeForce && millis() - lastShake > CFG.shakeCooldownMs && !panelOpen() && !fortune) {
+    lastShake = millis();
+    warp('shake');
+  }
+}
+
+
+/* ---------- 10. VOID PORTAL SOUND (Web Audio, no extra libraries) ---- */
+// Drone + drifting pads + echoing glass plinks + a soft heartbeat, all in a
+// huge reverb, over flowing water and random droplets / bubbles.
+
+const WORLD_ROOTS = [57, 50, 53, 48, 55, 52];           // MIDI roots per world: A, D, F, C, G, E
+const PENTA = [0, 3, 5, 7, 10, 12, 15, 17];
+const PROGRESSION = [[0, 'min'], [-4, 'maj'], [3, 'maj'], [-2, 'maj']];
+const CHORD = { min: [0, 3, 7, 14], maj: [0, 4, 7, 14] };
+const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+
+const Sound = {
+  on: true, started: false, ac: null,
+  root: 57, bpm: 120, step: 0, next: 0, nextDrop: 0, chordIdx: 0,
+
+  start() {
+    if (this.started) { if (this.on && this.ac.state === 'suspended') this.ac.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    this.started = true;
+    const ac = this.ac = new AC();
+    ac.resume();
+
+    this.master = ac.createGain();
+    this.master.gain.value = 0;
+    this.master.connect(ac.destination);
+    this.master.gain.setTargetAtTime(this.on ? 0.8 : 0, ac.currentTime, 1.2);
+
+    this.verb = ac.createConvolver();                   // the void
+    this.verb.buffer = impulse(ac, 6, 2.2);
+    const wet = ac.createGain(); wet.gain.value = 0.7;
+    this.verb.connect(wet).connect(this.master);
+
+    this.echo = ac.createDelay(2);                      // dripping echo
+    this.echo.delayTime.value = 0.42;
+    const fb = ac.createGain(); fb.gain.value = 0.42;
+    const tone = ac.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = 2200;
+    this.echo.connect(tone).connect(fb).connect(this.echo);
+    tone.connect(this.master); tone.connect(this.verb);
+
+    this.noise = noiseBuffer(ac, 4);
+    this.buildDrone(); this.buildPad(); this.buildWater();
+    this.next = ac.currentTime + 0.1;
+    this.nextDrop = ac.currentTime + 0.5;
+    this.setScene(current(), false);
+    setInterval(() => this.schedule(), 50);
+  },
+
+  toggle() {
+    this.on = !this.on;
+    if (this.on) this.ac.resume();
+    this.master.gain.setTargetAtTime(this.on ? 0.8 : 0, this.ac.currentTime, 0.25);
+  },
+
+  pause(hidden) {
+    if (!this.started) return;
+    if (hidden) this.ac.suspend(); else if (this.on) this.ac.resume();
+  },
+
+  // route a node to dry / reverb / echo with the given amounts
+  send(node, dry, wet, echo = 0) {
+    [[this.master, dry], [this.verb, wet], [this.echo, echo]].forEach(([dest, amt]) => {
+      if (amt <= 0) return;
+      const g = this.ac.createGain(); g.gain.value = amt;
+      node.connect(g).connect(dest);
+    });
+  },
+
+  buildDrone() {
+    const ac = this.ac, lp = ac.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 320; lp.Q.value = 5;
+    lfo(ac, 0.045, 180, lp.frequency);
+    const bus = ac.createGain(); bus.gain.value = 0.16;
+    lp.connect(bus); this.send(bus, 1, 0.6);
+    this.drone = [[-24, 'sawtooth', 0], [-24, 'sine', 7], [-17, 'triangle', -5]].map(([semi, type, cents]) => {
+      const o = ac.createOscillator(); o.type = type; o.detune.value = cents; o.connect(lp); o.start();
+      return { o, semi };
+    });
+  },
+
+  buildPad() {
+    const ac = this.ac, lp = ac.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 900;
+    lfo(ac, 0.07, 500, lp.frequency);
+    const bus = ac.createGain(); bus.gain.value = 0.045;
+    lp.connect(bus); this.send(bus, 1, 1.2);
+    this.pad = [0, 1, 2, 3].map(q => {
+      const o = ac.createOscillator(); o.type = 'triangle'; o.detune.value = (q - 1.5) * 6; o.connect(lp); o.start();
+      return o;
+    });
+  },
+
+  buildWater() {                                        // a stream + a high trickle
+    const ac = this.ac;
+    [[900, 0.6, 0.05, 0.17, 0], [3200, 4, 0.012, 3.1, 1.7]].forEach(([freq, q, vol, rate, offset]) => {
+      const src = ac.createBufferSource(); src.buffer = this.noise; src.loop = true;
+      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = q;
+      lfo(ac, 0.11, freq * 0.4, bp.frequency);
+      const g = ac.createGain(); g.gain.value = vol;
+      lfo(ac, rate, vol * 0.6, g.gain);
+      src.connect(bp).connect(g); this.send(g, 1, 0.5);
+      src.start(0, offset);
+    });
+  },
+
+  setScene(sc, fx) {
+    if (!this.started) return;
+    const now = this.ac.currentTime;
+    this.root = WORLD_ROOTS[sc.worldIndex] + [0, 2, -3][sc.id % 3];
+    this.bpm = sc.bpm;
+    this.drone.forEach(({ o, semi }) => o.frequency.setTargetAtTime(hz(this.root + semi), now, fx ? 0.6 : 0.01));
+    this.setChord(this.chordIdx, now, fx ? 0.8 : 0.01);
+    if (fx) this.whoosh(now);
+  },
+
+  setChord(idx, when, glide = 0.8) {
+    this.chordIdx = idx;
+    const [off, quality] = PROGRESSION[idx];
+    CHORD[quality].forEach((iv, v) => this.pad[v].frequency.setTargetAtTime(hz(this.root + off + iv), when, glide));
+  },
+
+  schedule() {
+    const ac = this.ac;
+    if (ac.state !== 'running') return;
+    const now = ac.currentTime, ahead = now + 0.25, stepDur = 60 / this.bpm / 2;
+    if (this.next < now - 0.5) this.next = now + 0.05;          // recover after a stall
+    if (this.nextDrop < now - 0.5) this.nextDrop = now + 0.05;
+    while (this.next < ahead) { this.playStep(this.step++, this.next); this.next += stepDur; }
+    while (this.nextDrop < ahead) {
+      this.drop(this.nextDrop, 500 + Math.random() * 900, 0.05 + Math.random() * 0.08);
+      if (Math.random() < 0.12) for (let q = 1; q <= 4; q++) this.drop(this.nextDrop + q * 0.045, 1200 + Math.random() * 1200, 0.03);
+      this.nextDrop += 0.12 + Math.random() * Math.random() * 1.6;
+    }
+  },
+
+  playStep(s, when) {
+    if (s % 32 === 0) this.setChord((s >> 5) % PROGRESSION.length, when);
+    if (s % 8 === 0) this.kick(when, 1);
+    if (s % 16 === 11) this.kick(when, 0.45);
+    if (Math.random() < 0.22) {
+      const note = this.root + PROGRESSION[this.chordIdx][0] + 12 + PENTA[Math.floor(Math.random() * PENTA.length)];
+      this.pluck(when, note, 0.035 + Math.random() * 0.03);
+    }
+  },
+
+  drop(when, f0, vol) {                                 // water droplet: fast upward chirp
+    const ac = this.ac, o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.setValueAtTime(f0, when);
+    o.frequency.exponentialRampToValueAtTime(f0 * 2.6, when + 0.045);
+    g.gain.setValueAtTime(0, when);
+    g.gain.linearRampToValueAtTime(vol, when + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.09);
+    let out = g;
+    if (ac.createStereoPanner) { out = ac.createStereoPanner(); out.pan.value = Math.random() * 1.6 - 0.8; g.connect(out); }
+    o.connect(g); this.send(out, 0.6, 0.9, 0.25);
+    o.start(when); o.stop(when + 0.12);
+  },
+
+  pluck(when, midi, vol) {                              // glassy bell
+    const ac = this.ac, g = ac.createGain();
+    g.gain.setValueAtTime(0, when);
+    g.gain.linearRampToValueAtTime(vol, when + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 1.6);
+    [[1, 1], [2.01, 0.3]].forEach(([mult, amt]) => {
+      const o = ac.createOscillator(), og = ac.createGain();
+      o.frequency.value = hz(midi) * mult; og.gain.value = amt;
+      o.connect(og).connect(g); o.start(when); o.stop(when + 1.7);
+    });
+    this.send(g, 0.5, 0.9, 0.5);
+  },
+
+  kick(when, vol) {                                     // soft heartbeat
+    const ac = this.ac, o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.setValueAtTime(110, when);
+    o.frequency.exponentialRampToValueAtTime(42, when + 0.25);
+    g.gain.setValueAtTime(0.22 * vol, when);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.5);
+    o.connect(g); this.send(g, 1, 0.15);
+    o.start(when); o.stop(when + 0.55);
+  },
+
+  whoosh(when) {                                        // portal opening + a big plop
+    const ac = this.ac, src = ac.createBufferSource(), bp = ac.createBiquadFilter(), g = ac.createGain();
+    src.buffer = this.noise;
+    bp.type = 'bandpass'; bp.Q.value = 6;
+    bp.frequency.setValueAtTime(150, when);
+    bp.frequency.exponentialRampToValueAtTime(3500, when + 0.7);
+    bp.frequency.exponentialRampToValueAtTime(300, when + 1.3);
+    g.gain.setValueAtTime(0, when);
+    g.gain.linearRampToValueAtTime(0.25, when + 0.3);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 1.4);
+    src.connect(bp).connect(g); this.send(g, 0.7, 1);
+    src.start(when, Math.random() * 2); src.stop(when + 1.5);
+    this.drop(when + 0.05, 260, 0.25);
+    this.pluck(when + 0.3, this.root + 24, 0.06);
+  },
+
+  virus() {                                             // cute chiptune giggle
+    if (!this.started || !this.on) return;
+    const ac = this.ac, t0 = ac.currentTime + 0.02;
+    [0, 4, 7, 12, 16, 19, 24].forEach((iv, q) => {
+      const o = ac.createOscillator(), g = ac.createGain(), when = t0 + q * 0.055;
+      o.type = 'square'; o.frequency.value = hz(this.root + 24 + iv);
+      g.gain.setValueAtTime(0.035, when);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + 0.07);
+      o.connect(g); this.send(g, 1, 0.3, 0.3);
+      o.start(when); o.stop(when + 0.08);
+    });
+  },
+
+  blip() {                                              // pop-up opens / closes
+    if (!this.started || !this.on) return;
+    const ac = this.ac, t0 = ac.currentTime + 0.01;
+    [0, 7].forEach((iv, q) => {
+      const o = ac.createOscillator(), g = ac.createGain(), when = t0 + q * 0.06;
+      o.type = 'square'; o.frequency.value = hz(this.root + 31 + iv);
+      g.gain.setValueAtTime(0.025, when);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + 0.06);
+      o.connect(g); this.send(g, 1, 0.3, 0.2);
+      o.start(when); o.stop(when + 0.07);
+    });
+  },
+
+  chime() {                                             // oracle card / wall post
+    if (!this.started || !this.on) return;
+    const t0 = this.ac.currentTime + 0.02;
+    [0, 3, 7, 10, 12, 15, 19].forEach((iv, q) => this.pluck(t0 + q * 0.09, this.root + 12 + iv, 0.06));
+  },
+};
+
+function lfo(ac, rate, depth, param) {
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.frequency.value = rate; g.gain.value = depth;
+  o.connect(g).connect(param); o.start();
+}
+
+function noiseBuffer(ac, seconds) {                     // pink-ish noise
+  const len = Math.floor(ac.sampleRate * seconds), buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+  let b0 = 0, b1 = 0, b2 = 0;
+  for (let n = 0; n < len; n++) {
+    const w = Math.random() * 2 - 1;
+    b0 = 0.99765 * b0 + w * 0.099; b1 = 0.963 * b1 + w * 0.2965; b2 = 0.57 * b2 + w * 1.0526;
+    d[n] = (b0 + b1 + b2 + w * 0.1848) * 0.2;
+  }
+  return buf;
+}
+
+function impulse(ac, seconds, decay) {                  // synthetic reverb tail
+  const len = Math.floor(ac.sampleRate * seconds), buf = ac.createBuffer(2, len, ac.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const d = buf.getChannelData(c);
+    for (let n = 0; n < len; n++) d[n] = (Math.random() * 2 - 1) * Math.pow(1 - n / len, decay);
+  }
+  return buf;
+}
+
+
+/* ---------- UTILITIES ------------------------------------------------ */
+
+function frac(x) { return x - Math.floor(x); }
+
+function hash(a, b, c = 0) {              // fast deterministic 0..1 noise
+  let h = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(c | 0, 1442695041);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h = Math.imul(h ^ (h >>> 15), 2246822519);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+function strHash(s) {                     // 32-bit FNV-1a
+  let h = 2166136261;
+  for (let n = 0; n < s.length; n++) h = Math.imul(h ^ s.charCodeAt(n), 16777619);
+  return h >>> 0;
+}
+
+function rgb(hex) { const n = parseInt(hex.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+function invertHex(hex) { return '#' + (0xffffff ^ parseInt(hex.slice(1), 16)).toString(16).padStart(6, '0'); }
+function lum(hex) { const [r, g, b] = rgb(hex); return 0.2126 * r + 0.7152 * g + 0.0722 * b; }
+function mix(a, b, t) {
+  const A = rgb(a), B = rgb(b);
+  return '#' + A.map((v, q) => Math.round(v + (B[q] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function titleCase(s) { return s.toLowerCase().replace(/\b\w/g, ch => ch.toUpperCase()); }
+
+function readLocal(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; }
+}
+function writeLocal(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode: fine */ }
+}
+</script>
+</body>
+</html>
